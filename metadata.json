@@ -1,0 +1,6 @@
+
+{
+  "name": "Inventory & POS Dashboard",
+  "description": "A modern, professional UI for an Inventory Management and Point of Sale (POS) system. This application provides a dashboard for sales analytics, detailed inventory tracking, and a simulated POS interface for transactions.",
+  "requestFramePermissions": []
+}
