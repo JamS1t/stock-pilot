@@ -1,6 +1,6 @@
 import { getAuthContext } from "@/context/AuthContext";
 
-const API_BASE_URL =  "http://stock-pilot-production.up.railway.app:5000/api";
+const API_BASE_URL =  "https://stock-pilot-production.up.railway.app:5000/api";
 
 let refreshPromise: Promise<string | null> | null = null;
 
