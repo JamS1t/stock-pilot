@@ -24,7 +24,7 @@ const LoginPage: React.FC = () => {
     if (google && googleButtonRef.current && !loading && !showSetupStoreModal) {
       try {
         google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+          client_id: "714854418773-o6gkkqgrnf04nosj4m38qc9v4j5thq69.apps.googleusercontent.com",
           callback: handleCredentialResponse,
         });
 
