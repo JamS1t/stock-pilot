@@ -24,7 +24,7 @@ const SetupStoreModal: React.FC<SetupStoreModalProps> = ({
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/auth/setup-store",
+        "https://stock-pilot-production.up.railway.app/api/auth/setup-store",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
