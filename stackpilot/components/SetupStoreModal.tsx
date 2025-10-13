@@ -2,7 +2,12 @@ import React, { useState } from "react";
 
 interface SetupStoreModalProps {
   userId: number;
-  onStoreSetupComplete: () => void;
+  onStoreSetupComplete: (storeData: {
+    user_id: number;
+    store_name: string;
+    timezone: string;
+    currency: string;
+  }) => void;
   onClose: () => void;
 }
 
@@ -12,7 +17,7 @@ const SetupStoreModal: React.FC<SetupStoreModalProps> = ({
   onClose,
 }) => {
   const [storeName, setStoreName] = useState("");
-  const [timezone, setTimezone] = useState("UTC"); // Default timezone
+  const [timezone, setTimezone] = useState("Asia/Manila"); // Default to Philippines timezone
   const [currency, setCurrency] = useState("PHP"); // Default currency
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -22,35 +27,19 @@ const SetupStoreModal: React.FC<SetupStoreModalProps> = ({
     setLoading(true);
     setError("");
 
+    const storeData = {
+      user_id: userId,
+      store_name: storeName,
+      timezone: timezone,
+      currency: currency,
+    };
+
     try {
-      const response = await fetch(
-        "https://stock-pilot-production.up.railway.app/api/auth/setup-store",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: userId,
-            store_name: storeName,
-            timezone: timezone,
-            currency: currency,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // console.log('Store setup successful:', data);
-        // Assuming the backend returns necessary info or just a success status
-        // For now, we'll just call onStoreSetupComplete
-        onStoreSetupComplete();
-      } else {
-        setError(data.message || "Failed to set up store.");
-      }
+      // Pass the store data to the parent component
+      // The parent will handle the actual API call
+      onStoreSetupComplete(storeData);
     } catch (err) {
-      // console.error('Error during store setup:', err);
       setError("An unexpected error occurred during store setup.");
-    } finally {
       setLoading(false);
     }
   };
@@ -97,11 +86,13 @@ const SetupStoreModal: React.FC<SetupStoreModalProps> = ({
               onChange={(e) => setTimezone(e.target.value)}
               className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
             >
-              {/* Add more timezone options as needed */}
+              <option value="Asia/Manila">Asia/Manila (PHT)</option>
               <option value="UTC">UTC</option>
-              <option value="Asia/Manila">Asia/Manila</option>
-              <option value="America/New_York">America/New York</option>
-              <option value="Europe/London">Europe/London</option>
+              <option value="America/New_York">America/New York (EST/EDT)</option>
+              <option value="America/Los_Angeles">America/Los Angeles (PST/PDT)</option>
+              <option value="Europe/London">Europe/London (GMT/BST)</option>
+              <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+              <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
             </select>
           </div>
 
@@ -118,11 +109,12 @@ const SetupStoreModal: React.FC<SetupStoreModalProps> = ({
               onChange={(e) => setCurrency(e.target.value)}
               className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
             >
-              {/* Add more currency options as needed */}
-              <option value="PHP">PHP</option>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
+              <option value="PHP">PHP (₱)</option>
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="GBP">GBP (£)</option>
+              <option value="JPY">JPY (¥)</option>
+              <option value="SGD">SGD (S$)</option>
             </select>
           </div>
 
@@ -131,7 +123,7 @@ const SetupStoreModal: React.FC<SetupStoreModalProps> = ({
           <button
             type="submit"
             disabled={loading}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-500 transition-colors"
+            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <div className="flex items-center">
@@ -146,7 +138,7 @@ const SetupStoreModal: React.FC<SetupStoreModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-gray-500 transition-colors mt-2"
+            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-gray-500 transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
