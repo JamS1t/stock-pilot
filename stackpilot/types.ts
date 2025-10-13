@@ -2,8 +2,9 @@
 export interface Product {
   id: string;
   name: string;
-  sku: string;
-  price: number;
+  sku?: string;
+  unitPrice: number;
+  sellingPrice: number;
   stock: number;
   categoryId: string;
   supplierId?: string;
@@ -38,7 +39,6 @@ export interface Order {
   date: Date;
   items: OrderItem[];
   subtotal: number;
-  tax: number;
   total: number;
   discount?: number; // value of discount
   discountAmount?: number; // calculated amount
@@ -50,3 +50,4 @@ export interface Sale {
   date: string;
   amount: number;
 }
+

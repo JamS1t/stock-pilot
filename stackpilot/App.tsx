@@ -1,219 +1,74 @@
+import React, { useState } from "react";
+import Sidebar from "./components/Sidebar";
+import PosPage from "./pages/PosPage";
+import InventoryPage from "./pages/InventoryPage";
+import ReportsPage from "./pages/ReportsPage";
+import CategoriesPage from "./pages/CategoriesPage";
+import SuppliersPage from "./pages/SuppliersPage";
+import OrderHistoryPage from "./pages/OrderHistoryPage";
+import AdminSettingsPage from "./pages/AdminSettingsPage";
+import LoginPage from "./pages/LoginPage";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+// Remove dummy data imports and types that are now fetched within pages
+// import { Product, Category, Supplier, Order, OrderItem } from "./types";
+// import { PRODUCTS, CATEGORIES, SUPPLIERS, ORDERS } from "./constants";
 
-import React, { useState } from 'react';
-import Sidebar from './components/Sidebar';
-import PosPage from './pages/PosPage';
-import InventoryPage from './pages/InventoryPage';
-import ReportsPage from './pages/ReportsPage';
-import CategoriesPage from './pages/CategoriesPage';
-import SuppliersPage from './pages/SuppliersPage';
-import OrderHistoryPage from './pages/OrderHistoryPage';
-import AdminSettingsPage from './pages/AdminSettingsPage';
-import LoginPage from './pages/LoginPage';
-import { Product, Category, Supplier, Order, OrderItem } from './types';
-import { PRODUCTS, CATEGORIES, SUPPLIERS, ORDERS } from './constants';
+// Main App component wrapped with AuthProvider
+const AppContent: React.FC = () => {
+  const { isAuthenticated, logout } = useAuth(); // Use auth context
+  const [activePage, setActivePage] = useState("pos");
 
-const App: React.FC = () => {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [activePage, setActivePage] = useState('pos');
-    
-    // Data state
-    const [products, setProducts] = useState<Product[]>(PRODUCTS);
-    const [categories, setCategories] = useState<Category[]>(CATEGORIES);
-    const [suppliers, setSuppliers] = useState<Supplier[]>(SUPPLIERS);
-    const [orders, setOrders] = useState<Order[]>(ORDERS);
-    const [cart, setCart] = useState<OrderItem[]>([]);
-    
-    // --- Handlers ---
-    
-    const handleLogin = () => setIsAuthenticated(true);
-    const handleLogout = () => setIsAuthenticated(false);
+  // Data state is now managed within individual page components or context
+  // const [products, setProducts] = useState<Product[]>(PRODUCTS);
+  // const [categories, setCategories] = useState<Category[]>(CATEGORIES);
+  // const [suppliers, setSuppliers] = useState<Supplier[]>(SUPPLIERS);
+  // const [orders, setOrders] = useState<Order[]>(ORDERS);
+  // const [cart, setCart] = useState<OrderItem[]>([]);
 
-    // Cart Handlers
-    const handleAddToCart = (product: Product) => {
-        setCart(prevCart => {
-            const existingItem = prevCart.find(item => item.productId === product.id);
-            if (existingItem) {
-                return prevCart.map(item =>
-                    item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item
-                );
-            }
-            return [...prevCart, {
-                id: `cart-item-${Date.now()}`,
-                productId: product.id,
-                name: product.name,
-                price: product.price,
-                quantity: 1,
-                categoryId: product.categoryId,
-            }];
-        });
-    };
-    
-    const handleUpdateQuantity = (productId: string, quantity: number) => {
-        setCart(prevCart => prevCart.map(item =>
-            item.productId === productId ? { ...item, quantity: Math.max(1, quantity) } : item
-        ));
-    };
+  // --- Handlers ---
+  // All handlers for data manipulation are now within their respective page components
 
-    const handleRemoveFromCart = (productId: string) => {
-        setCart(prevCart => prevCart.filter(item => item.productId !== productId));
-    };
-
-    const handleClearCart = () => {
-        setCart([]);
-    };
-
-    // Order Handler
-    const handleCreateOrder = (payload: {
-        items: OrderItem[];
-        total: number;
-        subtotal: number;
-        tax: number;
-        paymentMethod: 'cash' | 'card';
-        discount: number;
-        discountAmount: number;
-        discountType: 'percentage' | 'fixed';
-    }): Order => {
-        const newOrder: Order = {
-            id: `ord-${Date.now()}`,
-            date: new Date(),
-            ...payload
-        };
-        setOrders(prevOrders => [newOrder, ...prevOrders]);
-
-        // Update stock
-        setProducts(prevProducts => {
-            const newProducts = [...prevProducts];
-            payload.items.forEach(item => {
-                const productIndex = newProducts.findIndex(p => p.id === item.productId);
-                if (productIndex !== -1) {
-                    newProducts[productIndex].stock -= item.quantity;
-                }
-            });
-            return newProducts;
-        });
-
-        handleClearCart();
-        return newOrder;
-    };
-    
-    // Product Handlers
-    const handleAddProduct = (productData: Omit<Product, 'id'>) => {
-        const newProduct: Product = {
-            id: `prod-${Date.now()}`,
-            ...productData
-        };
-        setProducts(prev => [newProduct, ...prev]);
-    };
-
-    const handleUpdateProduct = (updatedProduct: Product) => {
-        setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-    };
-    
-    const handleDeleteProduct = (productId: string) => {
-        setProducts(prev => prev.filter(p => p.id !== productId));
-    };
-    
-    // Category Handlers
-    const handleAddCategory = (categoryData: Omit<Category, 'id'>) => {
-        const newCategory: Category = {
-            id: `cat-${Date.now()}`,
-            ...categoryData
-        };
-        setCategories(prev => [newCategory, ...prev]);
-    };
-
-    const handleUpdateCategory = (updatedCategory: Category) => {
-        setCategories(prev => prev.map(c => c.id === updatedCategory.id ? updatedCategory : c));
-    };
-
-    const handleDeleteCategory = (categoryId: string) => {
-        setCategories(prev => prev.filter(c => c.id !== categoryId));
-    };
-
-    // Supplier Handlers
-    const handleAddSupplier = (supplierData: Omit<Supplier, 'id'>) => {
-        const newSupplier: Supplier = {
-            id: `sup-${Date.now()}`,
-            ...supplierData
-        };
-        setSuppliers(prev => [newSupplier, ...prev]);
-    };
-
-    const handleUpdateSupplier = (updatedSupplier: Supplier) => {
-        setSuppliers(prev => prev.map(s => s.id === updatedSupplier.id ? updatedSupplier : s));
-    };
-
-    const handleDeleteSupplier = (supplierId: string) => {
-        setSuppliers(prev => prev.filter(s => s.id !== supplierId));
-    };
-
-
-    const renderActivePage = () => {
-        switch (activePage) {
-            case 'pos':
-                return <PosPage 
-                    products={products} 
-                    categories={categories}
-                    cart={cart}
-                    onAddToCart={handleAddToCart}
-                    onUpdateQuantity={handleUpdateQuantity}
-                    onRemoveFromCart={handleRemoveFromCart}
-                    onClearCart={handleClearCart}
-                    onCreateOrder={handleCreateOrder}
-                />;
-            case 'inventory':
-                return <InventoryPage
-                    products={products}
-                    categories={categories}
-                    suppliers={suppliers}
-                    onAddProduct={handleAddProduct}
-                    onUpdateProduct={handleUpdateProduct}
-                    onDeleteProduct={handleDeleteProduct}
-                />;
-            case 'reports':
-                return <ReportsPage orders={orders} products={products} categories={categories} />;
-            case 'categories':
-                return <CategoriesPage 
-                    categories={categories}
-                    onAddCategory={handleAddCategory}
-                    onUpdateCategory={handleUpdateCategory}
-                    onDeleteCategory={handleDeleteCategory}
-                />;
-            case 'suppliers':
-                return <SuppliersPage 
-                    suppliers={suppliers}
-                    onAddSupplier={handleAddSupplier}
-                    onUpdateSupplier={handleUpdateSupplier}
-                    onDeleteSupplier={handleDeleteSupplier}
-                />;
-            case 'order_history':
-                return <OrderHistoryPage orders={orders} />;
-            case 'settings':
-                return <AdminSettingsPage />;
-            default:
-                return <PosPage 
-                    products={products} 
-                    categories={categories}
-                    cart={cart}
-                    onAddToCart={handleAddToCart}
-                    onUpdateQuantity={handleUpdateQuantity}
-                    onRemoveFromCart={handleRemoveFromCart}
-                    onClearCart={handleClearCart}
-                    onCreateOrder={handleCreateOrder}
-                />;
-        }
-    };
-    
-    if (!isAuthenticated) {
-        return <LoginPage onLogin={handleLogin} />;
+  const renderActivePage = () => {
+    switch (activePage) {
+      case "pos":
+        return <PosPage />; // No props needed
+      case "inventory":
+        return <InventoryPage />; // No props needed
+      case "reports":
+        return <ReportsPage />; // No props needed
+      case "categories":
+        return <CategoriesPage />; // No props needed
+      case "suppliers":
+        return <SuppliersPage />; // No props needed
+      case "order_history":
+        return <OrderHistoryPage />; // No props needed
+      case "settings":
+        return <AdminSettingsPage />;
+      default:
+        return <PosPage />; // No props needed
     }
+  };
 
-    return (
-        <div className="flex h-screen bg-gray-900 text-white font-sans overflow-hidden">
-            <Sidebar activePage={activePage} setActivePage={setActivePage} onLogout={handleLogout} />
-            {renderActivePage()}
-        </div>
-    );
+  if (!isAuthenticated) {
+    return <LoginPage />; // No onLogin prop needed
+  }
+
+  return (
+    <div className="flex h-screen bg-gray-900 text-white font-sans overflow-hidden">
+      <Sidebar
+        activePage={activePage}
+        setActivePage={setActivePage}
+        // onLogout prop is no longer needed
+      />
+      {renderActivePage()}
+    </div>
+  );
 };
+
+const App: React.FC = () => (
+  <AuthProvider>
+    <AppContent />
+  </AuthProvider>
+);
 
 export default App;
