@@ -9,7 +9,8 @@ interface InventoryTableProps {
   mode: "pos" | "management";
   onAddToCart?: (product: Product) => void;
   onEdit?: (product: Product) => void;
-  onDelete?: (productId: number) => void; // Changed productId to number
+  onDelete?: (productId: number) => void;
+  cartItems?: { product_id: number; quantity: number }[]; // New prop for cart state
 }
 
 const StockStatusBadge: React.FC<{ stock: number }> = ({ stock }) => {
@@ -38,12 +39,12 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
   onAddToCart,
   onEdit,
   onDelete,
+  cartItems = [],
 }) => {
   const getCategoryName = (categoryId: number) => {
-    // Changed categoryId to number
     return (
       categories.find((c) => c.category_id === categoryId)?.name || "Unknown"
-    ); // Use category_id
+    );
   };
 
   return (
@@ -86,15 +87,12 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
               key={product.product_id}
               className="border-b border-gray-700 hover:bg-gray-700/50 group"
             >
-              {" "}
-              {/* Use product_id as key */}
               <td className="sticky left-0 px-4 py-3 font-medium text-white whitespace-nowrap bg-gray-800 group-hover:bg-gray-700/50">
                 {product.name}
               </td>
               <td className="px-4 py-3 whitespace-nowrap">
                 {getCategoryName(product.category_id)}
-              </td>{" "}
-              {/* Use category_id */}
+              </td>
               <td className="px-4 py-3 whitespace-nowrap font-mono text-xs">
                 {product.sku || "-----"}
               </td>
@@ -105,8 +103,7 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
                 {isNaN(product.selling_price)
                   ? "Invalid Price"
                   : formatCurrency(product.selling_price)}
-              </td>{" "}
-              {/* Use selling_price */}
+              </td>
               <td className="px-4 py-3 text-center whitespace-nowrap">
                 {product.stock}
               </td>
@@ -117,7 +114,10 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
                 {mode === "pos" && onAddToCart && (
                   <button
                     onClick={() => onAddToCart(product)}
-                    disabled={product.stock === 0}
+                    disabled={
+                      product.stock === 0 ||
+                      (cartItems.find((item) => item.product_id === product.product_id)?.quantity || 0) >= product.stock
+                    }
                     className="p-2 text-sky-400 rounded-full hover:bg-sky-400/10 disabled:text-gray-600 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors duration-200"
                     aria-label="Add to cart"
                   >
@@ -128,17 +128,13 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
                   <div className="flex items-center justify-center space-x-2">
                     <button
                       onClick={async () => {
-                        // console.log("🟡 Fetching full details for product:", product.product_id);
                         try {
                           const response = await getProductById(product.product_id);
                           if (response.data) {
-                            // console.log("✅ Product details fetched:", response.data);
                             onEdit?.(response.data);
-                          } else {
-                            // console.error("❌ Failed to fetch product details:", response.message);
                           }
                         } catch (error) {
-                          // console.error("❌ Error fetching product details:", error);
+                          // Handle error
                         }
                       }}
                       className="p-2 text-yellow-400 rounded-full hover:bg-yellow-400/10 transition-colors duration-200"

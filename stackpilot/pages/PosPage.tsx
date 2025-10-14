@@ -65,7 +65,6 @@ const PosPage: React.FC = () => {
           : [categoriesResponse.data]
       );
     } catch (err: any) {
-      // console.error("Failed to fetch POS data:", err);
       setError(err.message || "Failed to fetch POS data.");
     } finally {
       setLoading(false);
@@ -85,11 +84,20 @@ const PosPage: React.FC = () => {
         (item) => item.product_id === product.product_id
       );
       if (existingItem) {
+        // Check if we can add more (don't exceed available stock)
+        if (existingItem.quantity >= product.stock) {
+          // Don't add more if already at max stock
+          return prevCart;
+        }
         return prevCart.map((item) =>
           item.product_id === product.product_id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
+      }
+      // New item - check if stock is available
+      if (product.stock < 1) {
+        return prevCart;
       }
       return [
         ...prevCart,
@@ -106,11 +114,16 @@ const PosPage: React.FC = () => {
 
   const handleUpdateQuantity = (productId: number, quantity: number) => {
     setCart((prevCart) =>
-      prevCart.map((item) =>
-        item.product_id === productId
-          ? { ...item, quantity: Math.max(1, quantity) }
-          : item
-      )
+      prevCart.map((item) => {
+        if (item.product_id === productId) {
+          // Find the product to check stock limit
+          const product = products.find((p) => p.product_id === productId);
+          const maxQuantity = product ? product.stock : item.quantity;
+          // Ensure quantity is between 1 and available stock
+          return { ...item, quantity: Math.max(1, Math.min(quantity, maxQuantity)) };
+        }
+        return item;
+      })
     );
   };
 
@@ -162,11 +175,9 @@ const PosPage: React.FC = () => {
           fetchPosData();
         }, 300);
       } else {
-        // console.warn("⚠️ No order_id found in response:", response);
         isProcessingOrder.current = false;
       }
     } catch (err: any) {
-      // console.error("❌ Failed to process order:", err);
       setError(err.message || "Failed to create order.");
       isProcessingOrder.current = false;
     } finally {
@@ -251,6 +262,7 @@ const PosPage: React.FC = () => {
                 categories={categories}
                 mode="pos"
                 onAddToCart={handleAddToCart}
+                cartItems={cart}
               />
             )}
           </div>
