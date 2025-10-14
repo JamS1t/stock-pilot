@@ -33,10 +33,10 @@ const PosPage: React.FC = () => {
 
   const fetchPosData = useCallback(async () => {
     if (!isAuthenticated) return;
-    
+
     // Don't refetch if we're in the middle of processing an order
     if (isProcessingOrder.current) return;
-    
+
     setLoading(true);
     setError(null);
 
@@ -45,9 +45,11 @@ const PosPage: React.FC = () => {
         getProducts({
           search: debouncedSearchTerm || undefined,
           category_id:
-            debouncedCategoryFilter !== "" ? Number(debouncedCategoryFilter) : undefined,
+            debouncedCategoryFilter !== ""
+              ? Number(debouncedCategoryFilter)
+              : undefined,
           supplier_id: undefined,
-          stock_status: "In Stock",
+          stock_status: undefined,
         }),
         getCategories(),
       ]);
@@ -150,10 +152,10 @@ const PosPage: React.FC = () => {
       if (orderId) {
         // Clear cart immediately
         handleClearCart();
-        
+
         // Show invoice modal
         setOrderForReceipt(orderId);
-        
+
         // Refresh product list after a short delay
         setTimeout(() => {
           isProcessingOrder.current = false;
