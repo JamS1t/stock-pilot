@@ -2,7 +2,12 @@
   "redirects": [
     {
       "source": "/(.*)",
-      "has": [{ "host": "stock-pilot-theta.vercel.app" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "stock-pilot-theta.vercel.app"
+        }
+      ],
       "destination": "https://www.stockpilot.space/$1",
       "permanent": true
     }
