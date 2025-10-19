@@ -1,7 +1,7 @@
 import React from "react";
 import { Product, Category, getProductById } from "../utils/api"; // Import Product and Category from API utils
 import { PlusCircleIcon, EditIcon, TrashIcon } from "./icons";
-import { formatCurrency } from "../format";
+import { useFormatters } from "@/format";
 
 interface InventoryTableProps {
   products: Product[];
@@ -46,6 +46,8 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
       categories.find((c) => c.category_id === categoryId)?.name || "Unknown"
     );
   };
+
+  const { formatCurrency } = useFormatters();
 
   return (
     <div className="flex-1 overflow-auto relative">

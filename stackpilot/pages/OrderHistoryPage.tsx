@@ -5,7 +5,7 @@ import {
   DocumentDuplicateIcon,
 } from "../components/icons";
 import InvoiceModal from "../components/InvoiceModal";
-import { formatCurrency } from "../format";
+import { useFormatters } from "../format";
 import { useAuth } from "../context/AuthContext";
 import { getOrderInvoice, OrderListItem, OrdersListRow } from "../utils/api";
 import { useDebounce } from "../utils/hooks";
@@ -35,6 +35,8 @@ const OrderHistoryPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
+
+  const { formatCurrency, formatLocalDate } = useFormatters();
 
   // Debounce the search term - only triggers after user stops typing
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -191,8 +193,7 @@ const OrderHistoryPage: React.FC = () => {
                       {order.order_id}
                     </td>
                     <td className="px-6 py-4">
-                      {new Date(order.order_date).toLocaleDateString()}{" "}
-                      {new Date(order.order_date).toLocaleTimeString()}
+                      {formatLocalDate(order.order_date)}
                     </td>
                     <td className="px-6 py-4">
                       {order.items

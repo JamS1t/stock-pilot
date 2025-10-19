@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getOrderInvoice } from "../utils/api";
-import { formatCurrency } from "../format";
+import { useFormatters } from "../format";
 
 interface InvoiceModalProps {
   orderId?: number;
@@ -11,6 +11,8 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ orderId, onClose }) => {
   const [invoice, setInvoice] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { formatCurrency, formatLocalDate } = useFormatters();
 
   if (!orderId) return null;
 
@@ -140,7 +142,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ orderId, onClose }) => {
                 Invoice #{header?.invoice_number ?? orderId}
               </p>
               <p className="text-sm text-gray-400 print-text-gray">
-                Date: {new Date(header?.date).toLocaleString()}
+                Date: {formatLocalDate(header?.date)}
               </p>
             </div>
             <div className="text-right">

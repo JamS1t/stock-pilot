@@ -6,7 +6,7 @@ import {
   ShoppingCartIcon,
   PackageIcon,
 } from "../components/icons";
-import { formatCurrency } from "../format";
+import { useFormatters } from "../format";
 import {
   getSalesReport,
   getCategories,
@@ -42,6 +42,8 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
   // Debounce filters to prevent excessive API calls
   const debouncedCategoryFilter = useDebounce(categoryFilter, 300);
   const debouncedProductFilter = useDebounce(productFilter, 300);
+
+  const { formatCurrency } = useFormatters();
 
   const getDatesForTimeframe = (
     tf: Timeframe

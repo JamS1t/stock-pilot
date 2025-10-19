@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { OrderItem } from "../utils/api"; // Import OrderItem from API utils
 import { TrashIcon, XMarkIcon } from "./icons";
 import PaymentModal from "./PaymentModal";
-import { formatCurrency } from "../format";
+import { useFormatters } from "../format";
 
 type DiscountType = "percentage" | "fixed";
 
@@ -29,6 +29,7 @@ const PosSystem: React.FC<PosSystemProps> = ({
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState<DiscountType>("percentage");
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const { formatCurrency } = useFormatters();
 
   const subtotal = cart.reduce(
     (acc, item) =>

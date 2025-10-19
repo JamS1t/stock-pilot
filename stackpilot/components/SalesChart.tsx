@@ -1,12 +1,14 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { formatCurrency } from '../format';
+import { useFormatters } from '../format';
 
 interface SalesChartProps {
   data: { date: string; amount: number; profit: number }[];
 }
 
 const SalesChart: React.FC<SalesChartProps> = ({ data }) => {
+  const { formatCurrency } = useFormatters();
+
   return (
     <div style={{ width: '100%', height: 300 }}>
         <ResponsiveContainer>

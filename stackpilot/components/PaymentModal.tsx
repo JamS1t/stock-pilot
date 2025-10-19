@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CashIcon, CreditCardIcon } from './icons';
-import { formatCurrency } from '../format';
+import { useFormatters } from '../format';
 
 interface PaymentModalProps {
     total: number;
@@ -10,6 +10,8 @@ interface PaymentModalProps {
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ total, onClose, onConfirmPayment }) => {
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
+
+    const { formatCurrency } = useFormatters();
 
     const handleConfirm = () => {
         onConfirmPayment(paymentMethod);
