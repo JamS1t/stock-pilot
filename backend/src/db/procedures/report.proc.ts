@@ -12,7 +12,7 @@ export async function GetSalesReportJSON(
   granularity: "minute" | "day"
 ) {
   // Fetch timezone from DB
-  const [rows]: any = await pool.query("SELECT timezone FROM stockpilot.stores WHERE store_id = ?", [storeId]);
+  const [rows]: any = await pool.query(`SELECT timezone FROM ${process.env.DB_NAME}.stores WHERE store_id = ?`, [storeId]);
   const store = Array.isArray(rows) ? rows[0] : rows;
   const timezone = store?.timezone || "Asia/Manila";
 
@@ -35,8 +35,6 @@ export async function GetSalesReportJSON(
 
   // Parse JSON safely
   const reportJSON = safeJSONParse<any>(result?.report_json, {});
-
-  console.log(reportJSON)
 
   reportJSON.chart = reportJSON.chart.map((entry: any) => ({
     ...entry,
