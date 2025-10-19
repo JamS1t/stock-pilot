@@ -1,5 +1,10 @@
 {
   "redirects": [
-    { "source": "/(.*)", "destination": "https://www.stockpilot.space/$1", "permanent": true }
+    {
+      "source": "/(.*)",
+      "has": [{ "host": "stock-pilot-theta.vercel.app" }],
+      "destination": "https://www.stockpilot.space/$1",
+      "permanent": true
+    }
   ]
 }
