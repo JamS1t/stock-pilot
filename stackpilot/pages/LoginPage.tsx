@@ -127,7 +127,7 @@ const LoginPage: React.FC = () => {
               Stock<span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">Pilot</span>
             </h1>
             
-            <p className="text-gray-500 text-xs tracking-wide">By James Carl Sitsit</p>
+            <p className="text-gray-500 text-xs tracking-wide">By JC Studio</p>
             
             <div className="pt-2">
               <p className="text-gray-400 text-sm font-light">Welcome back</p>
