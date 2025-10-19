@@ -20,7 +20,7 @@ export const useFormatters = () => {
 
   // 🕒 Local date/time formatter
   const formatLocalDate = (utcDate: string | Date): string => {
-    const date = new Date(utcDate);
+    const date = new Date(utcDate+"Z");
     return new Intl.DateTimeFormat(undefined, {
       timeZone,
       year: "numeric",

@@ -19,19 +19,22 @@ export const toUTCDateRange = (
 };
 
 export const fromUTCToLocal = (
-  dbDate: string | Date,                  // MySQL DATETIME
+  dbDate: string | Date,
   timezone: string,
   granularity: "minute" | "day" = "minute"
 ): string => {
   if (!dbDate) return "Invalid Date";
 
-  // Normalize input
   let dt: DateTime;
+
   if (dbDate instanceof Date) {
-    dt = DateTime.fromJSDate(dbDate);
+    dt = DateTime.fromJSDate(dbDate, { zone: "UTC" }); // treat Date as UTC
   } else if (typeof dbDate === "string") {
-    // MySQL DATETIME: "YYYY-MM-DD HH:mm:ss"
-    dt = DateTime.fromFormat(dbDate, "yyyy-MM-dd HH:mm:ss");
+    // MySQL DATETIME: "YYYY-MM-DD HH:mm:ss" or with microseconds
+    const format = dbDate.includes(".")
+      ? "yyyy-MM-dd HH:mm:ss.SSSSSS"
+      : "yyyy-MM-dd HH:mm:ss";
+    dt = DateTime.fromFormat(dbDate, format, { zone: "UTC" }); // parse as UTC
   } else {
     return "Invalid Date";
   }
@@ -41,12 +44,10 @@ export const fromUTCToLocal = (
     return "Invalid Date";
   }
 
-  // Convert to store timezone for display
-  const local = dt.setZone(timezone, { keepLocalTime: true });
+  // Convert to target timezone (properly)
+  const local = dt.setZone(timezone); // keepLocalTime defaults to false
 
-  // Return formatted string
   return granularity === "day"
     ? local.toFormat("yyyy-MM-dd")
     : local.toFormat("yyyy-MM-dd hh:mm a"); // e.g. 2025-10-19 02:15 PM
 };
-
