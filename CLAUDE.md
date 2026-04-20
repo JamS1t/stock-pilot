@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Current Direction — Read This First
+
+**As of 2026-04-20, this project is mid-pivot.** The app is being repositioned from a generic POS/inventory dashboard into a mobile-first utang (customer credit) tracker for Philippine sari-sari stores, with AI (Taglish voice entry + notebook OCR) as the differentiator.
+
+Before writing code, read **`docs/ROADMAP.md`** — it contains the approved 4-phase MVP plan, the Phase 1 task breakdown with dependencies, and the list of files to extend vs rebuild vs reuse. The existing POS/Inventory/Reports pages are NOT deleted during the pivot; they get demoted to "Coming soon" and become a Pro+ tier later.
+
 ## Project Overview
 
 Stock Pilot is a full-stack inventory and POS (Point of Sale) dashboard. It consists of two separate packages:
