@@ -15,6 +15,7 @@ import utangRoutes from "./routes/utang.routes";
 import paymentRoutes from "./routes/payment.routes";
 import stockMovementRoutes from "./routes/stockMovement.routes";
 import cashSessionRoutes from "./routes/cashSession.routes";
+import aiRoutes from "./routes/ai.routes";
 import { requireAuth } from "./middlewares/auth.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
 
@@ -39,6 +40,7 @@ app.use("/api/utang", utangRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/stock-movements", stockMovementRoutes);
 app.use("/api/cash-sessions", cashSessionRoutes);
+app.use("/api/ai", aiRoutes);
 
 app.use(errorHandler);
 
