@@ -8,10 +8,24 @@ import {
   TagIcon,
   UsersIcon,
 } from "../components/icons";
+import InvoiceModal from "../components/InvoiceModal";
 import { useAuth } from "../context/AuthContext";
 import { useFormatters } from "../format";
 import { useDebounce } from "../utils/hooks";
-import { getProducts, Product } from "../utils/api";
+import {
+  createCustomer,
+  createUtang,
+  Customer,
+  CustomerBalance,
+  getCustomerBalance,
+  getCustomers,
+  getProducts,
+  getWhoOwes,
+  processOrderPOS,
+  Product,
+  recordPayment,
+  WhoOwesCustomer,
+} from "../utils/api";
 
 interface CounterDashboardProps {
   setActivePage: (page: string) => void;
@@ -45,6 +59,21 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [whoOwes, setWhoOwes] = useState<WhoOwesCustomer[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [customerBalance, setCustomerBalance] =
+    useState<CustomerBalance | null>(null);
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [ledgerNote, setLedgerNote] = useState("");
+  const [actionStatus, setActionStatus] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderForReceipt, setOrderForReceipt] = useState<number | null>(null);
+  const [todaySales, setTodaySales] = useState(0);
+  const [expectedCash, setExpectedCash] = useState(0);
   const debouncedSearchTerm = useDebounce(searchTerm, 250);
 
   const fetchProducts = useCallback(async () => {
@@ -67,6 +96,35 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     fetchProducts();
   }, [fetchProducts]);
 
+  const refreshLedger = useCallback(async () => {
+    const [customersResponse, whoOwesResponse] = await Promise.all([
+      getCustomers(),
+      getWhoOwes(),
+    ]);
+
+    setCustomers(customersResponse.data || []);
+    setWhoOwes(whoOwesResponse.data || []);
+  }, []);
+
+  useEffect(() => {
+    refreshLedger().catch((err: any) => {
+      setActionError(err.message || "Unable to load ledger data.");
+    });
+  }, [refreshLedger]);
+
+  useEffect(() => {
+    if (!selectedCustomerId) {
+      setCustomerBalance(null);
+      return;
+    }
+
+    getCustomerBalance(Number(selectedCustomerId))
+      .then((response) => setCustomerBalance(response.data))
+      .catch((err: any) => {
+        setActionError(err.message || "Unable to load customer balance.");
+      });
+  }, [selectedCustomerId]);
+
   const subtotal = useMemo(
     () =>
       cart.reduce(
@@ -79,6 +137,14 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
   const itemCount = useMemo(
     () => cart.reduce((sum, item) => sum + item.quantity, 0),
     [cart]
+  );
+
+  const selectedCustomer = useMemo(
+    () =>
+      customers.find(
+        (customer) => customer.customer_id === Number(selectedCustomerId)
+      ) || null,
+    [customers, selectedCustomerId]
   );
 
   const addToCart = (product: Product) => {
@@ -128,6 +194,142 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
         )
         .filter((item) => item.quantity > 0)
     );
+  };
+
+  const reloadCounterData = async () => {
+    await Promise.all([fetchProducts(), refreshLedger()]);
+    if (selectedCustomerId) {
+      const balanceResponse = await getCustomerBalance(Number(selectedCustomerId));
+      setCustomerBalance(balanceResponse.data);
+    }
+  };
+
+  const buildOrderPayload = (paymentMethod: "cash" | "gcash") => ({
+    sub_total: subtotal,
+    tax: 0,
+    total: subtotal,
+    discount: 0,
+    discount_amount: 0,
+    discount_type: null,
+    payment_method: paymentMethod,
+    items: cart.map((item) => ({
+      product_id: item.product_id,
+      name: item.product_name,
+      price: item.price_at_sale,
+      quantity: item.quantity,
+      category_id: item.category_id,
+    })),
+  });
+
+  const handleSale = async (paymentMethod: "cash" | "gcash") => {
+    if (cart.length === 0 || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setActionError(null);
+    setActionStatus(null);
+
+    try {
+      const response = await processOrderPOS(buildOrderPayload(paymentMethod));
+      const orderId = response.data?.order_id;
+
+      setTodaySales((current) => current + subtotal);
+      if (paymentMethod === "cash") {
+        setExpectedCash((current) => current + subtotal);
+      }
+      setCart([]);
+      setActionStatus(`${paymentMethod.toUpperCase()} sale recorded.`);
+      if (orderId) setOrderForReceipt(orderId);
+      await reloadCounterData();
+    } catch (err: any) {
+      setActionError(err.message || "Unable to process sale.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateCustomer = async () => {
+    if (!newCustomerName.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setActionError(null);
+    setActionStatus(null);
+
+    try {
+      const response = await createCustomer({
+        name: newCustomerName.trim(),
+        phone: newCustomerPhone.trim() || null,
+      });
+      await refreshLedger();
+      setSelectedCustomerId(String(response.data.customer_id));
+      setNewCustomerName("");
+      setNewCustomerPhone("");
+      setActionStatus("Customer added.");
+    } catch (err: any) {
+      setActionError(err.message || "Unable to create customer.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUtang = async () => {
+    if (cart.length === 0 || !selectedCustomerId || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setActionError(null);
+    setActionStatus(null);
+
+    try {
+      await createUtang({
+        customer_id: Number(selectedCustomerId),
+        amount: subtotal,
+        note: ledgerNote || "Counter credit sale",
+        source: "manual",
+        items: cart.map((item) => ({
+          product_id: item.product_id,
+          name: item.product_name,
+          quantity: item.quantity,
+          unit_price: item.price_at_sale,
+          line_total: item.price_at_sale * item.quantity,
+        })),
+      });
+
+      setCart([]);
+      setLedgerNote("");
+      setActionStatus("Utang added to customer balance.");
+      await reloadCounterData();
+    } catch (err: any) {
+      setActionError(err.message || "Unable to create utang entry.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRecordPayment = async () => {
+    const amount = Number(paymentAmount);
+    if (!selectedCustomerId || !Number.isFinite(amount) || amount <= 0) return;
+
+    setIsSubmitting(true);
+    setActionError(null);
+    setActionStatus(null);
+
+    try {
+      await recordPayment({
+        customer_id: Number(selectedCustomerId),
+        amount,
+        method: "cash",
+        note: ledgerNote || null,
+      });
+
+      setExpectedCash((current) => current + amount);
+      setPaymentAmount("");
+      setLedgerNote("");
+      setActionStatus("Payment recorded.");
+      await reloadCounterData();
+    } catch (err: any) {
+      setActionError(err.message || "Unable to record payment.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -236,7 +438,19 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
               </button>
             </div>
 
-            <div className="mb-4 max-h-[350px] space-y-3 overflow-y-auto pr-1">
+            {(actionStatus || actionError) && (
+              <div
+                className={`mb-4 rounded-lg border p-3 text-sm ${
+                  actionError
+                    ? "border-red-500/40 bg-red-950/40 text-red-200"
+                    : "border-emerald-500/40 bg-emerald-950/40 text-emerald-200"
+                }`}
+              >
+                {actionError || actionStatus}
+              </div>
+            )}
+
+            <div className="mb-4 max-h-[260px] space-y-3 overflow-y-auto pr-1">
               {cart.map((item) => (
                 <div
                   key={item.product_id}
@@ -289,6 +503,72 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
               )}
             </div>
 
+            <div className="mb-4 rounded-lg border border-neutral-800 bg-neutral-950 p-3">
+              <div className="mb-3 grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto]">
+                <select
+                  value={selectedCustomerId}
+                  onChange={(event) => setSelectedCustomerId(event.target.value)}
+                  className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                >
+                  <option value="">Select customer for utang/bayad</option>
+                  {customers.map((customer) => (
+                    <option
+                      key={customer.customer_id}
+                      value={customer.customer_id}
+                    >
+                      {customer.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="rounded-lg border border-neutral-800 px-3 py-2 text-right">
+                  <p className="text-xs text-neutral-500">Balance</p>
+                  <p className="text-sm font-bold text-white">
+                    {formatCurrency(customerBalance?.balance ?? 0)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <input
+                  value={newCustomerName}
+                  onChange={(event) => setNewCustomerName(event.target.value)}
+                  placeholder="New customer name"
+                  className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                />
+                <div className="grid grid-cols-[1fr_auto] gap-2">
+                  <input
+                    value={newCustomerPhone}
+                    onChange={(event) => setNewCustomerPhone(event.target.value)}
+                    placeholder="Phone"
+                    className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                  />
+                  <button
+                    onClick={handleCreateCustomer}
+                    disabled={!newCustomerName.trim() || isSubmitting}
+                    className="min-h-11 rounded-lg bg-neutral-700 px-3 text-sm font-bold text-white hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-[1fr_130px]">
+                <input
+                  value={ledgerNote}
+                  onChange={(event) => setLedgerNote(event.target.value)}
+                  placeholder="Ledger note"
+                  className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                />
+                <input
+                  value={paymentAmount}
+                  onChange={(event) => setPaymentAmount(event.target.value)}
+                  placeholder="Bayad"
+                  inputMode="decimal"
+                  className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                />
+              </div>
+            </div>
+
             <div className="mt-auto rounded-lg border border-neutral-800 bg-neutral-950 p-4">
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-neutral-400">Total</span>
@@ -297,16 +577,47 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
                 </span>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                {["Cash", "GCash", "Utang"].map((label) => (
-                  <button
-                    key={label}
-                    disabled={cart.length === 0}
-                    className="min-h-12 rounded-lg bg-emerald-600 px-3 text-sm font-bold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
-                  >
-                    {label}
-                  </button>
-                ))}
+                <button
+                  onClick={() => handleSale("cash")}
+                  disabled={cart.length === 0 || isSubmitting}
+                  className="min-h-12 rounded-lg bg-emerald-600 px-3 text-sm font-bold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+                >
+                  Cash
+                </button>
+                <button
+                  onClick={() => handleSale("gcash")}
+                  disabled={cart.length === 0 || isSubmitting}
+                  className="min-h-12 rounded-lg bg-cyan-600 px-3 text-sm font-bold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+                >
+                  GCash
+                </button>
+                <button
+                  onClick={handleUtang}
+                  disabled={
+                    cart.length === 0 || !selectedCustomerId || isSubmitting
+                  }
+                  className="min-h-12 rounded-lg bg-amber-600 px-3 text-sm font-bold text-white hover:bg-amber-500 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+                >
+                  Utang
+                </button>
               </div>
+              <button
+                onClick={handleRecordPayment}
+                disabled={
+                  !selectedCustomerId ||
+                  !Number.isFinite(Number(paymentAmount)) ||
+                  Number(paymentAmount) <= 0 ||
+                  isSubmitting
+                }
+                className="mt-2 min-h-12 w-full rounded-lg border border-emerald-600 px-3 text-sm font-bold text-emerald-200 hover:bg-emerald-950 disabled:cursor-not-allowed disabled:border-neutral-700 disabled:text-neutral-500"
+              >
+                Record Bayad
+              </button>
+              {selectedCustomer && (
+                <p className="mt-2 text-xs text-neutral-500">
+                  Customer: {selectedCustomer.name}
+                </p>
+              )}
             </div>
           </div>
 
@@ -321,10 +632,24 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
 
             <div className="space-y-3">
               {[
-                ["Today Sales", formatCurrency(0), "No completed sales yet"],
-                ["Expected Cash", formatCurrency(0), "Open cash session soon"],
+                [
+                  "Today Sales",
+                  formatCurrency(todaySales),
+                  "Counter sales this session",
+                ],
+                [
+                  "Expected Cash",
+                  formatCurrency(expectedCash),
+                  "Cash sales and bayad this session",
+                ],
                 ["Low Stock", "0 items", "Stock movement feed pending"],
-                ["Who Owes", "0 customers", "Ledger summary pending"],
+                [
+                  "Who Owes",
+                  `${whoOwes.length} customers`,
+                  whoOwes.length
+                    ? `${whoOwes[0].name}: ${formatCurrency(whoOwes[0].balance)}`
+                    : "No open balances",
+                ],
               ].map(([label, value, detail]) => (
                 <div
                   key={label}
@@ -345,9 +670,42 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
                 Online shell. Queue not configured.
               </p>
             </div>
+
+            {whoOwes.length > 0 && (
+              <div className="mt-4 rounded-lg border border-neutral-800 bg-neutral-950 p-3">
+                <p className="mb-2 text-sm font-semibold text-white">
+                  Who Owes
+                </p>
+                <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
+                  {whoOwes.slice(0, 5).map((customer) => (
+                    <button
+                      key={customer.customer_id}
+                      onClick={() =>
+                        setSelectedCustomerId(String(customer.customer_id))
+                      }
+                      className="flex min-h-11 w-full items-center justify-between rounded-lg border border-neutral-800 px-3 text-left hover:border-amber-400"
+                    >
+                      <span className="truncate text-sm text-neutral-200">
+                        {customer.name}
+                      </span>
+                      <span className="text-sm font-bold text-amber-200">
+                        {formatCurrency(customer.balance)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </aside>
         </section>
       </div>
+
+      {orderForReceipt && (
+        <InvoiceModal
+          orderId={orderForReceipt}
+          onClose={() => setOrderForReceipt(null)}
+        />
+      )}
     </main>
   );
 };
