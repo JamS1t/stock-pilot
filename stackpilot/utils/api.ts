@@ -429,3 +429,202 @@ export const getSalesReport = async (
   const endpoint = `/reports/sales?${query.toString()}`;
   return fetchApi(endpoint, "GET");
 };
+
+// --- Counter Ledger API Calls ---
+export interface Customer {
+  customer_id: number;
+  name: string;
+  phone: string | null;
+  photo_url: string | null;
+  notes: string | null;
+  created_at?: string;
+  updated_at?: string;
+  balance?: number;
+  last_activity_at?: string | null;
+}
+
+export interface CustomerInput {
+  name: string;
+  phone?: string | null;
+  photo_url?: string | null;
+  notes?: string | null;
+}
+
+export interface UtangItemInput {
+  product_id?: number | null;
+  name: string;
+  quantity?: number;
+  unit_price?: number | null;
+  line_total?: number | null;
+}
+
+export type UtangSource = "manual" | "voice" | "ocr";
+
+export interface UtangEntry {
+  entry_id: number;
+  customer_id: number;
+  amount: number;
+  note: string | null;
+  source: UtangSource;
+  created_by: number | null;
+  created_at: string;
+  voided_at: string | null;
+  voided_by: number | null;
+  items: UtangItemInput[] | null;
+}
+
+export interface CreateUtangInput {
+  customer_id: number;
+  amount: number;
+  note?: string | null;
+  source?: UtangSource;
+  items?: UtangItemInput[] | null;
+}
+
+export type LedgerPaymentMethod = "cash" | "gcash" | "other";
+
+export interface UtangPayment {
+  payment_id: number;
+  customer_id: number;
+  amount: number;
+  method: LedgerPaymentMethod;
+  note: string | null;
+  created_by: number | null;
+  created_at: string;
+  voided_at: string | null;
+  voided_by: number | null;
+}
+
+export interface CreatePaymentInput {
+  customer_id: number;
+  amount: number;
+  method?: LedgerPaymentMethod;
+  note?: string | null;
+}
+
+export interface CustomerBalance {
+  customer_id: number;
+  balance: number;
+  last_activity_at: string | null;
+}
+
+export interface WhoOwesCustomer {
+  customer_id: number;
+  name: string;
+  phone: string | null;
+  photo_url: string | null;
+  balance: number;
+  last_activity_at: string | null;
+  oldest_unpaid_at: string | null;
+}
+
+export interface MutationResult {
+  affected_rows: number;
+}
+
+export interface CreatedCustomerResult {
+  customer_id: number;
+}
+
+export interface CreatedUtangResult {
+  entry_id: number;
+}
+
+export interface CreatedPaymentResult {
+  payment_id: number;
+}
+
+export const getCustomers = async (filters?: {
+  id?: number;
+  search?: string;
+}): Promise<{ message: string; data: Customer[] }> => {
+  const query = new URLSearchParams();
+  if (filters?.id) query.append("id", filters.id.toString());
+  if (filters?.search) query.append("search", filters.search);
+  const endpoint = `/customers${query.toString() ? `?${query.toString()}` : ""}`;
+  return fetchApi(endpoint, "GET");
+};
+
+export const createCustomer = async (
+  customer: CustomerInput
+): Promise<{ message: string; data: CreatedCustomerResult }> => {
+  return fetchApi("/customers", "POST", customer);
+};
+
+export const updateCustomer = async (
+  id: number,
+  customer: CustomerInput
+): Promise<{ message: string; data: MutationResult }> => {
+  return fetchApi(`/customers/${id}`, "PUT", customer);
+};
+
+export const deleteCustomer = async (
+  id: number
+): Promise<{ message: string; data: MutationResult }> => {
+  return fetchApi(`/customers/${id}`, "DELETE");
+};
+
+export const listUtang = async (filters?: {
+  customer_id?: number;
+  from?: string;
+  to?: string;
+}): Promise<{ message: string; data: UtangEntry[] }> => {
+  const query = new URLSearchParams();
+  if (filters?.customer_id)
+    query.append("customer_id", filters.customer_id.toString());
+  if (filters?.from) query.append("from", filters.from);
+  if (filters?.to) query.append("to", filters.to);
+  const endpoint = `/utang${query.toString() ? `?${query.toString()}` : ""}`;
+  return fetchApi(endpoint, "GET");
+};
+
+export const createUtang = async (
+  utang: CreateUtangInput
+): Promise<{ message: string; data: CreatedUtangResult }> => {
+  return fetchApi("/utang", "POST", utang);
+};
+
+export const voidUtang = async (
+  id: number
+): Promise<{ message: string; data: MutationResult }> => {
+  return fetchApi(`/utang/${id}/void`, "POST");
+};
+
+export const getWhoOwes = async (): Promise<{
+  message: string;
+  data: WhoOwesCustomer[];
+}> => {
+  return fetchApi("/utang/who-owes", "GET");
+};
+
+export const getCustomerBalance = async (
+  customerId: number
+): Promise<{ message: string; data: CustomerBalance }> => {
+  return fetchApi(`/utang/customers/${customerId}/balance`, "GET");
+};
+
+export const listPayments = async (filters?: {
+  customer_id?: number;
+  from?: string;
+  to?: string;
+}): Promise<{ message: string; data: UtangPayment[] }> => {
+  const query = new URLSearchParams();
+  if (filters?.customer_id)
+    query.append("customer_id", filters.customer_id.toString());
+  if (filters?.from) query.append("from", filters.from);
+  if (filters?.to) query.append("to", filters.to);
+  const endpoint = `/payments${query.toString() ? `?${query.toString()}` : ""}`;
+  return fetchApi(endpoint, "GET");
+};
+
+export const recordPayment = async (
+  payment: CreatePaymentInput
+): Promise<{ message: string; data: CreatedPaymentResult }> => {
+  return fetchApi("/payments", "POST", payment);
+};
+
+export const voidPayment = async (
+  id: number
+): Promise<{ message: string; data: MutationResult }> => {
+  return fetchApi(`/payments/${id}/void`, "POST");
+};
