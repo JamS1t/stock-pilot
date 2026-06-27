@@ -11,6 +11,12 @@ import {
 import InvoiceModal from "../components/InvoiceModal";
 import { useAuth } from "../context/AuthContext";
 import { useFormatters } from "../format";
+import {
+  getSyncQueueSummary,
+  queueOfflineMutation,
+  retrySyncQueue,
+  SyncQueueSummary,
+} from "../offline/syncQueue";
 import { useDebounce } from "../utils/hooks";
 import {
   createCustomer,
@@ -74,6 +80,16 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
   const [orderForReceipt, setOrderForReceipt] = useState<number | null>(null);
   const [todaySales, setTodaySales] = useState(0);
   const [expectedCash, setExpectedCash] = useState(0);
+  const [queueSummary, setQueueSummary] = useState<SyncQueueSummary>({
+    queued: 0,
+    syncing: 0,
+    synced: 0,
+    failed: 0,
+    total: 0,
+  });
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine
+  );
   const debouncedSearchTerm = useDebounce(searchTerm, 250);
 
   const fetchProducts = useCallback(async () => {
@@ -111,6 +127,33 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
       setActionError(err.message || "Unable to load ledger data.");
     });
   }, [refreshLedger]);
+
+  const refreshQueueSummary = useCallback(async () => {
+    const summary = await getSyncQueueSummary();
+    setQueueSummary(summary);
+  }, []);
+
+  useEffect(() => {
+    refreshQueueSummary().catch(() => undefined);
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      retrySyncQueue()
+        .then(setQueueSummary)
+        .catch((err: any) =>
+          setActionError(err.message || "Unable to retry sync queue.")
+        );
+    };
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [refreshQueueSummary]);
 
   useEffect(() => {
     if (!selectedCustomerId) {
@@ -279,11 +322,11 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     setActionStatus(null);
 
     try {
-      await createUtang({
+      const payload = {
         customer_id: Number(selectedCustomerId),
         amount: subtotal,
         note: ledgerNote || "Counter credit sale",
-        source: "manual",
+        source: "manual" as const,
         items: cart.map((item) => ({
           product_id: item.product_id,
           name: item.product_name,
@@ -291,6 +334,25 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
           unit_price: item.price_at_sale,
           line_total: item.price_at_sale * item.quantity,
         })),
+      };
+
+      if (!isOnline) {
+        await queueOfflineMutation({
+          entity_type: "utang_entry",
+          operation_type: "create",
+          endpoint: "/utang",
+          method: "POST",
+          payload,
+        });
+        setCart([]);
+        setLedgerNote("");
+        setActionStatus("Utang queued offline.");
+        await refreshQueueSummary();
+        return;
+      }
+
+      await createUtang({
+        ...payload,
       });
 
       setCart([]);
@@ -313,11 +375,30 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     setActionStatus(null);
 
     try {
-      await recordPayment({
+      const payload = {
         customer_id: Number(selectedCustomerId),
         amount,
-        method: "cash",
+        method: "cash" as const,
         note: ledgerNote || null,
+      };
+
+      if (!isOnline) {
+        await queueOfflineMutation({
+          entity_type: "utang_payment",
+          operation_type: "create",
+          endpoint: "/payments",
+          method: "POST",
+          payload,
+        });
+        setPaymentAmount("");
+        setLedgerNote("");
+        setActionStatus("Payment queued offline.");
+        await refreshQueueSummary();
+        return;
+      }
+
+      await recordPayment({
+        ...payload,
       });
 
       setExpectedCash((current) => current + amount);
@@ -327,6 +408,23 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
       await reloadCounterData();
     } catch (err: any) {
       setActionError(err.message || "Unable to record payment.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRetrySync = async () => {
+    setIsSubmitting(true);
+    setActionError(null);
+    setActionStatus(null);
+
+    try {
+      const summary = await retrySyncQueue();
+      setQueueSummary(summary);
+      setActionStatus("Sync retry finished.");
+      await reloadCounterData();
+    } catch (err: any) {
+      setActionError(err.message || "Unable to retry sync queue.");
     } finally {
       setIsSubmitting(false);
     }
@@ -666,9 +764,37 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
               <p className="text-sm font-semibold text-amber-200">
                 Offline / Sync
               </p>
-              <p className="mt-1 text-sm text-amber-100">
-                Online shell. Queue not configured.
-              </p>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-amber-100">
+                <div>
+                  <p className="text-xs text-amber-200/70">Status</p>
+                  <p className="font-semibold">
+                    {isOnline ? "Online" : "Offline"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-amber-200/70">Queued</p>
+                  <p className="font-semibold">{queueSummary.queued}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-amber-200/70">Failed</p>
+                  <p className="font-semibold">{queueSummary.failed}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-amber-200/70">Synced</p>
+                  <p className="font-semibold">{queueSummary.synced}</p>
+                </div>
+              </div>
+              <button
+                onClick={handleRetrySync}
+                disabled={
+                  isSubmitting ||
+                  (!queueSummary.queued && !queueSummary.failed) ||
+                  !isOnline
+                }
+                className="mt-3 min-h-11 w-full rounded-lg border border-amber-400/60 px-3 text-sm font-bold text-amber-100 hover:bg-amber-900/50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Retry Sync
+              </button>
             </div>
 
             {whoOwes.length > 0 && (
