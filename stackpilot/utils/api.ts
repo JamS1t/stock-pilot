@@ -363,10 +363,30 @@ interface ProcessOrderResponse {
   order_id: number;
 }
 
+export interface ProcessOrderPayload {
+  sub_total: number;
+  tax: number;
+  total: number;
+  discount: number;
+  discount_amount: number;
+  discount_type: string | null;
+  payment_method: string;
+  items: {
+    product_id: number;
+    name: string;
+    price: number;
+    quantity: number;
+    category_id: number;
+  }[];
+  client_mutation_id?: string;
+  device_id?: string;
+  local_id?: string;
+}
+
 // --- ORDER PROCEDURES INTEGRATION ---
 
 export const processOrderPOS = async (
-  payload: any
+  payload: ProcessOrderPayload
 ): Promise<{ message: string; data: ProcessOrderResponse }> => {
   return fetchApi("/orders/process", "POST", { payload });
 };

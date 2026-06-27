@@ -33,6 +33,7 @@ import {
   getWhoOwes,
   openCashSession,
   processOrderPOS,
+  ProcessOrderPayload,
   Product,
   recordPayment,
   StockMovementReason,
@@ -277,7 +278,9 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     }
   };
 
-  const buildOrderPayload = (paymentMethod: "cash" | "gcash") => ({
+  const buildOrderPayload = (
+    paymentMethod: "cash" | "gcash"
+  ): ProcessOrderPayload => ({
     sub_total: subtotal,
     tax: 0,
     total: subtotal,
@@ -302,7 +305,27 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     setActionStatus(null);
 
     try {
-      const response = await processOrderPOS(buildOrderPayload(paymentMethod));
+      const payload = buildOrderPayload(paymentMethod);
+
+      if (!isOnline) {
+        await queueOfflineMutation({
+          entity_type: "sale",
+          operation_type: "create",
+          endpoint: "/orders/process",
+          method: "POST",
+          payload: { payload },
+        });
+        setTodaySales((current) => current + subtotal);
+        if (paymentMethod === "cash") {
+          setExpectedCash((current) => current + subtotal);
+        }
+        setCart([]);
+        setActionStatus(`${paymentMethod.toUpperCase()} sale queued offline.`);
+        await refreshQueueSummary();
+        return;
+      }
+
+      const response = await processOrderPOS(payload);
       const orderId = response.data?.order_id;
 
       setTodaySales((current) => current + subtotal);
