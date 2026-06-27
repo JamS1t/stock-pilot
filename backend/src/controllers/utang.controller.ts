@@ -59,7 +59,16 @@ function parseItems(value: unknown) {
 
 export async function createUtangHandler(req: Request, res: Response) {
   try {
-    const { customer_id, amount, note, source, items } = req.body;
+    const {
+      customer_id,
+      amount,
+      note,
+      source,
+      items,
+      client_mutation_id,
+      device_id,
+      local_id,
+    } = req.body;
     const { store_id, user_id } = req.user!;
     const customerId = parseId(
       customer_id,
@@ -84,7 +93,10 @@ export async function createUtangHandler(req: Request, res: Response) {
       note || null,
       parsedSource as UtangSource,
       user_id,
-      parseItems(items)
+      parseItems(items),
+      client_mutation_id || null,
+      device_id || null,
+      local_id || null
     );
 
     return successResponse(res, "Utang entry created successfully", result, 201);

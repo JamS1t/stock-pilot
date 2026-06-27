@@ -20,7 +20,10 @@ export async function createUtang(
   note: string | null = null,
   source: UtangSource = "manual",
   createdBy: number | null = null,
-  items: UtangItemInput[] | null = null
+  items: UtangItemInput[] | null = null,
+  clientMutationId: string | null = null,
+  deviceId: string | null = null,
+  localId: string | null = null
 ) {
   const result = await CreateUtang(
     storeId,
@@ -29,7 +32,10 @@ export async function createUtang(
     note,
     source,
     createdBy,
-    items
+    items,
+    clientMutationId,
+    deviceId,
+    localId
   );
   const entryId = result?.[0]?.id ?? null;
 

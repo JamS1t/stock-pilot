@@ -33,7 +33,15 @@ function parsePositiveAmount(value: unknown) {
 
 export async function createPaymentHandler(req: Request, res: Response) {
   try {
-    const { customer_id, amount, method, note } = req.body;
+    const {
+      customer_id,
+      amount,
+      method,
+      note,
+      client_mutation_id,
+      device_id,
+      local_id,
+    } = req.body;
     const { store_id, user_id } = req.user!;
     const customerId = parseId(
       customer_id,
@@ -57,7 +65,10 @@ export async function createPaymentHandler(req: Request, res: Response) {
       parsedAmount,
       parsedMethod as PaymentMethod,
       note || null,
-      user_id
+      user_id,
+      client_mutation_id || null,
+      device_id || null,
+      local_id || null
     );
 
     return successResponse(res, "Payment created successfully", result, 201);

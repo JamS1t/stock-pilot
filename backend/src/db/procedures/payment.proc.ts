@@ -2,14 +2,17 @@ import { callProc } from "../callProc";
 
 export type PaymentMethod = "cash" | "gcash" | "other";
 
-// CreatePayment(store_id, customer_id, amount, method, note, created_by)
+// CreatePayment(store_id, customer_id, amount, method, note, created_by, client_mutation_id, device_id, local_id)
 export async function CreatePayment(
   storeId: number,
   customerId: number,
   amount: number,
   method: PaymentMethod = "cash",
   note: string | null = null,
-  createdBy: number | null = null
+  createdBy: number | null = null,
+  clientMutationId: string | null = null,
+  deviceId: string | null = null,
+  localId: string | null = null
 ) {
   return callProc("CreatePayment", [
     storeId,
@@ -18,6 +21,9 @@ export async function CreatePayment(
     method,
     note,
     createdBy,
+    clientMutationId,
+    deviceId,
+    localId,
   ]);
 }
 

@@ -479,6 +479,9 @@ export interface CreateUtangInput {
   note?: string | null;
   source?: UtangSource;
   items?: UtangItemInput[] | null;
+  client_mutation_id?: string;
+  device_id?: string;
+  local_id?: string;
 }
 
 export type LedgerPaymentMethod = "cash" | "gcash" | "other";
@@ -500,6 +503,9 @@ export interface CreatePaymentInput {
   amount: number;
   method?: LedgerPaymentMethod;
   note?: string | null;
+  client_mutation_id?: string;
+  device_id?: string;
+  local_id?: string;
 }
 
 export interface CustomerBalance {

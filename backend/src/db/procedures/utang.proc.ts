@@ -10,7 +10,7 @@ export interface UtangItemInput {
   line_total?: number | null;
 }
 
-// CreateUtang(store_id, customer_id, amount, note, source, created_by, items_json)
+// CreateUtang(store_id, customer_id, amount, note, source, created_by, items_json, client_mutation_id, device_id, local_id)
 export async function CreateUtang(
   storeId: number,
   customerId: number,
@@ -18,7 +18,10 @@ export async function CreateUtang(
   note: string | null = null,
   source: UtangSource = "manual",
   createdBy: number | null = null,
-  items: UtangItemInput[] | null = null
+  items: UtangItemInput[] | null = null,
+  clientMutationId: string | null = null,
+  deviceId: string | null = null,
+  localId: string | null = null
 ) {
   return callProc("CreateUtang", [
     storeId,
@@ -28,6 +31,9 @@ export async function CreateUtang(
     source,
     createdBy,
     items && items.length ? JSON.stringify(items) : null,
+    clientMutationId,
+    deviceId,
+    localId,
   ]);
 }
 

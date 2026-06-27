@@ -16,7 +16,10 @@ export async function createPayment(
   amount: number,
   method: PaymentMethod = "cash",
   note: string | null = null,
-  createdBy: number | null = null
+  createdBy: number | null = null,
+  clientMutationId: string | null = null,
+  deviceId: string | null = null,
+  localId: string | null = null
 ) {
   const result = await CreatePayment(
     storeId,
@@ -24,7 +27,10 @@ export async function createPayment(
     amount,
     method,
     note,
-    createdBy
+    createdBy,
+    clientMutationId,
+    deviceId,
+    localId
   );
   const paymentId = result?.[0]?.id ?? null;
 
