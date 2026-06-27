@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+> Current direction as of 2026-06-27: read `docs/README.md` first. StockPilot is now being redirected toward StockPilot Counter AI, a tablet-first offline AI counter system for serious small retailers. The older mobile-first utang roadmap remains historical context only.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Current Direction — Read This First

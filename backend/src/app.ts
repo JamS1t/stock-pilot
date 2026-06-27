@@ -3,6 +3,7 @@ import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
+import healthRoute from "./routes/health.routes";
 import authRoutes from "./routes/auth.routes";
 import categoryRoutes from "./routes/category.routes";
 import supplierRoutes from "./routes/supplier.routes";
@@ -19,6 +20,7 @@ app.use(cookieParser());
 app.use(morgan("dev"));
 app.use(cors({ origin: process.env.CORS_ORIGIN, credentials: true }));
 
+app.use("/health", healthRoute);
 app.use("/api/auth", authRoutes);
 
 app.use(requireAuth); // Apply authentication middleware to all subsequent routes
