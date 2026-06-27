@@ -562,13 +562,32 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     setActionStatus(null);
 
     try {
-      await createStockMovement({
+      const payload = {
         product_id: Number(adjustmentProductId),
         quantity_delta: quantityDelta,
         reason: adjustmentReason,
         source_type: "counter_adjustment",
         note: adjustmentNote || null,
-      });
+      };
+
+      if (!isOnline) {
+        await queueOfflineMutation({
+          entity_type: "stock_movement",
+          operation_type: "create",
+          endpoint: "/stock-movements",
+          method: "POST",
+          payload,
+        });
+        setAdjustmentProductId("");
+        setAdjustmentQty("");
+        setAdjustmentReason("correction");
+        setAdjustmentNote("");
+        setActionStatus("Stock movement queued offline.");
+        await refreshQueueSummary();
+        return;
+      }
+
+      await createStockMovement(payload);
       setAdjustmentProductId("");
       setAdjustmentQty("");
       setAdjustmentReason("correction");
