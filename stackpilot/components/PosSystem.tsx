@@ -101,45 +101,54 @@ const PosSystem: React.FC<PosSystemProps> = ({
   };
 
   return (
-    <aside className="w-96 bg-gray-800/50 flex flex-col p-4 border-l border-gray-700">
-      <header className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-white">Current Order</h2>
+    <aside className="card flex w-96 flex-col p-4 lg:p-5">
+      <header className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display text-lg font-semibold text-ink">
+            Current order
+          </h2>
+          <p className="text-sm text-muted">
+            {cart.length} {cart.length === 1 ? "item" : "items"} in cart
+          </p>
+        </div>
         <button
+          type="button"
           onClick={() => {
             onClearCart();
             setDiscount(0);
           }}
           disabled={cart.length === 0}
-          className="flex items-center space-x-1 text-xs text-red-400 hover:text-red-300 disabled:text-gray-600 disabled:cursor-not-allowed"
+          className="btn btn-ghost px-3"
         >
-          <XMarkIcon className="w-4 h-4" />
-          <span>Clear All</span>
+          <XMarkIcon className="h-4 w-4" />
+          <span>Clear all</span>
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto -mr-2 pr-2">
+      <div className="-mr-2 flex-1 overflow-y-auto pr-2">
         {cart.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            <p>No items in cart</p>
+          <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-line-strong text-center">
+            <p className="text-sm font-semibold text-muted">Cart is empty</p>
+            <p className="text-xs text-faint">Tap a product to start a sale.</p>
           </div>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-2.5">
             {cart.map((item) => (
               <li
                 key={item.product_id} // Use product_id as key
-                className="flex items-center space-x-3 bg-gray-700/50 p-3 rounded-lg"
+                className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3"
               >
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-white">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-ink">
                     {item.product_name}
                   </p>{" "}
                   {/* Use product_name */}
-                  <p className="text-xs text-gray-400">
+                  <p className="money text-xs text-muted">
                     {formatCurrency(item.price_at_sale)}{" "}
                     {/* Use price_at_sale */}
                   </p>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <input
                     type="number"
                     value={item.quantity}
@@ -159,13 +168,15 @@ const PosSystem: React.FC<PosSystemProps> = ({
                       }
                     }}
                     min="1"
-                    className="w-14 bg-gray-800 text-center rounded-md py-1 border border-gray-600 focus:ring-sky-500 focus:border-sky-500"
+                    className="field field-sm money w-16 text-center"
                   />
                   <button
+                    type="button"
                     onClick={() => onRemoveFromCart(item.product_id)} // Use product_id
-                    className="p-1.5 text-red-500 hover:text-red-400 rounded-full hover:bg-red-500/10"
+                    className="flex min-h-11 min-w-11 items-center justify-center rounded-xl text-danger transition hover:bg-danger-tint"
+                    aria-label={`Remove ${item.product_name}`}
                   >
-                    <TrashIcon className="w-4 h-4" />
+                    <TrashIcon className="h-4 w-4" />
                   </button>
                 </div>
               </li>
@@ -174,33 +185,35 @@ const PosSystem: React.FC<PosSystemProps> = ({
         )}
       </div>
 
-      <footer className="mt-auto pt-4 border-t border-gray-700 space-y-3">
-        <div className="flex justify-between text-sm text-gray-300">
+      <footer className="mt-auto space-y-3 border-t border-line pt-4">
+        <div className="flex justify-between text-sm text-muted">
           <span>Subtotal</span>
-          <span>{formatCurrency(subtotal)}</span>
+          <span className="money text-ink">{formatCurrency(subtotal)}</span>
         </div>
-        <div className="flex justify-between items-center text-sm text-gray-300">
+        <div className="flex items-center justify-between text-sm text-muted">
           <label htmlFor="discount" className="flex-shrink-0">
             Discount
           </label>
-          <div className="flex items-center space-x-1">
-            <div className="flex items-center bg-gray-700 border border-gray-600 rounded-lg p-0.5">
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-0.5 rounded-xl border border-line bg-sunken p-0.5">
               <button
+                type="button"
                 onClick={() => setDiscountType("percentage")}
-                className={`px-2 py-0.5 text-xs rounded-md ${
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                   discountType === "percentage"
-                    ? "bg-sky-500 text-white"
-                    : "text-gray-400"
+                    ? "bg-peso text-white"
+                    : "text-muted hover:text-ink"
                 }`}
               >
                 %
               </button>
               <button
+                type="button"
                 onClick={() => setDiscountType("fixed")}
-                className={`px-2 py-0.5 text-xs rounded-md ${
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                   discountType === "fixed"
-                    ? "bg-sky-500 text-white"
-                    : "text-gray-400"
+                    ? "bg-peso text-white"
+                    : "text-muted hover:text-ink"
                 }`}
               >
                 ₱
@@ -214,26 +227,29 @@ const PosSystem: React.FC<PosSystemProps> = ({
               placeholder="0"
               min="0"
               max={discountType === "percentage" ? 100 : undefined}
-              className="w-20 bg-gray-700 text-right rounded-md py-1 border border-gray-600 focus:ring-sky-500 focus:border-sky-500"
+              className="field field-sm money w-20 text-right"
             />
           </div>
         </div>
         {discount > 0 && (
-          <div className="flex justify-between text-sm text-green-400">
-            <span>Discount Amount</span>
-            <span>- {formatCurrency(discountAmount)}</span>
+          <div className="flex justify-between text-sm text-peso-deep">
+            <span>Discount</span>
+            <span className="money">- {formatCurrency(discountAmount)}</span>
           </div>
         )}
-        <div className="flex justify-between text-xl font-bold text-white">
-          <span>Total</span>
-          <span>{formatCurrency(total)}</span>
+        <div className="flex items-baseline justify-between">
+          <span className="text-sm font-medium text-muted">Total</span>
+          <span className="money text-3xl font-bold text-ink">
+            {formatCurrency(total)}
+          </span>
         </div>
         <button
+          type="button"
           onClick={() => setIsPaymentModalOpen(true)}
           disabled={cart.length === 0}
-          className="w-full bg-sky-500 text-white font-bold py-3 rounded-lg hover:bg-sky-600 transition-all duration-300 transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:scale-100"
+          className="btn btn-primary btn-lg w-full"
         >
-          Proceed to Payment
+          Singilin (proceed to bayad)
         </button>
       </footer>
       {isPaymentModalOpen && (

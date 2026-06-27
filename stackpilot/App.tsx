@@ -16,8 +16,8 @@ const OrderHistoryPage = lazy(() => import("./pages/OrderHistoryPage"));
 const AdminSettingsPage = lazy(() => import("./pages/AdminSettingsPage"));
 
 const PageFallback: React.FC = () => (
-  <main className="flex flex-1 items-center justify-center bg-gray-900 text-sky-400">
-    <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-sky-500" />
+  <main className="flex flex-1 items-center justify-center bg-paper">
+    <div className="h-9 w-9 animate-spin rounded-full border-2 border-line border-t-peso" />
   </main>
 );
 
@@ -64,12 +64,8 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white font-sans overflow-hidden">
-      <Sidebar
-        activePage={activePage}
-        setActivePage={setActivePage}
-        // onLogout prop is no longer needed
-      />
+    <div className="flex h-screen overflow-hidden bg-paper text-ink">
+      <Sidebar activePage={activePage} setActivePage={setActivePage} />
       <Suspense fallback={<PageFallback />}>{renderActivePage()}</Suspense>
     </div>
   );

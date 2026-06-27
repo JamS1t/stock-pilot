@@ -18,42 +18,70 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ total, onClose, onConfirmPa
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
-            <div className="bg-gray-800 rounded-xl shadow-2xl p-8 w-full max-w-md border border-gray-700" onClick={e => e.stopPropagation()}>
-                <h2 className="text-2xl font-bold text-white mb-2 text-center">Confirm Payment</h2>
-                <p className="text-5xl font-extrabold text-sky-400 text-center mb-6">{formatCurrency(total)}</p>
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 backdrop-blur-sm"
+            onClick={onClose}
+        >
+            <div
+                className="card w-full max-w-md p-6 shadow-pop animate-fade-in"
+                onClick={e => e.stopPropagation()}
+            >
+                <p className="eyebrow text-center">Bayad</p>
+                <h2 className="mt-1 text-center font-display text-2xl font-bold text-ink">
+                    Confirm payment
+                </h2>
+                <p className="money mt-3 mb-6 text-center text-5xl font-bold text-peso">
+                    {formatCurrency(total)}
+                </p>
 
                 <div className="mb-6">
-                    <p className="text-sm font-medium text-gray-400 mb-2 text-center">Select Payment Method</p>
-                    <div className="grid grid-cols-2 gap-4">
+                    <p className="mb-2.5 text-center text-sm font-medium text-muted">
+                        Pumili ng bayad
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
                         <button
+                            type="button"
                             onClick={() => setPaymentMethod('cash')}
-                            className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-colors ${paymentMethod === 'cash' ? 'bg-sky-500/20 border-sky-500' : 'bg-gray-700/50 border-gray-600 hover:border-gray-500'}`}
+                            className={`flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-xl border-2 transition ${
+                                paymentMethod === 'cash'
+                                    ? 'border-peso bg-peso-tint text-peso-deep'
+                                    : 'border-line bg-surface text-muted hover:border-line-strong'
+                            }`}
                         >
-                            <CashIcon className="w-8 h-8 mb-2"/>
-                            <span className="font-semibold">Cash</span>
+                            <CashIcon className="h-7 w-7" />
+                            <span className="text-sm font-semibold">Cash</span>
                         </button>
                         <button
+                            type="button"
                             onClick={() => setPaymentMethod('card')}
-                             className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-colors ${paymentMethod === 'card' ? 'bg-sky-500/20 border-sky-500' : 'bg-gray-700/50 border-gray-600 hover:border-gray-500'}`}
+                            className={`flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-xl border-2 transition ${
+                                paymentMethod === 'card'
+                                    ? 'border-gcash bg-gcash-tint text-gcash'
+                                    : 'border-line bg-surface text-muted hover:border-line-strong'
+                            }`}
                         >
-                             <CreditCardIcon className="w-8 h-8 mb-2"/>
-                            <span className="font-semibold">Card</span>
+                            <CreditCardIcon className="h-7 w-7" />
+                            <span className="text-sm font-semibold">Card</span>
                         </button>
                     </div>
                 </div>
 
-                <div className="pt-4 flex flex-col space-y-3">
-                    <button 
+                <div className="flex flex-col gap-2">
+                    <button
+                        type="button"
                         onClick={handleConfirm}
-                        className="w-full bg-green-500 text-white font-bold py-3 rounded-lg hover:bg-green-600 transition-all duration-300"
+                        className={`btn btn-lg w-full ${
+                            paymentMethod === 'card'
+                                ? 'bg-gcash text-white hover:brightness-110'
+                                : 'btn-primary'
+                        }`}
                     >
-                        Confirm Transaction
+                        Confirm sale
                     </button>
-                    <button 
-                        type="button" 
-                        onClick={onClose} 
-                        className="w-full py-2 text-gray-400 hover:text-white transition-colors"
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="btn btn-ghost w-full"
                     >
                         Cancel
                     </button>

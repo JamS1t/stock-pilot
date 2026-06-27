@@ -2,20 +2,236 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   StockPilot Counter AI — "Palengke Daylight"
+   Base layer: typography, surfaces, accessibility floor
+   ============================================================ */
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Tabular figures everywhere money or counts appear */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Visible keyboard focus on every interactive element */
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px theme("colors.peso.DEFAULT");
+    border-radius: 0.6rem;
+  }
+
+  /* On the dark rail the white halo would vanish — use a darker halo */
+  .on-ink :where(a, button):focus-visible {
+    box-shadow: 0 0 0 2px theme("colors.ink.DEFAULT"),
+      0 0 0 4px theme("colors.rail.active");
+  }
+
+  ::selection {
+    background: theme("colors.peso.tint");
+    color: theme("colors.peso.deep");
+  }
+}
+
+/* ============================================================
+   Component primitives — the shared vocabulary.
+   Prefer these over ad-hoc utility stacks so every screen
+   (and every contributor) stays visually consistent.
+   ============================================================ */
+@layer components {
+  /* --- Surfaces --- */
+  .card {
+    @apply rounded-2xl border border-line bg-surface shadow-card;
+  }
+  .card-sunken {
+    @apply rounded-xl border border-line bg-sunken;
+  }
+
+  /* --- Eyebrow (Taglish section label) --- */
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-muted;
+  }
+
+  /* --- Form fields --- */
+  .field {
+    @apply min-h-11 w-full rounded-xl border border-line bg-surface px-3.5
+           text-base text-ink placeholder:text-faint outline-none transition
+           focus:border-peso;
+  }
+  .field-sm {
+    @apply min-h-10 text-sm px-3;
+  }
+  textarea.field {
+    @apply py-2.5 leading-relaxed;
+  }
+  select.field {
+    @apply appearance-none bg-[length:1.1rem] bg-[right_0.75rem_center] bg-no-repeat pr-9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B7268' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  }
+  .field-label {
+    @apply mb-1.5 block text-xs font-semibold text-muted;
+  }
+
+  /* --- Buttons --- */
+  .btn {
+    @apply inline-flex min-h-11 select-none items-center justify-center gap-2
+           rounded-xl px-4 text-sm font-semibold transition
+           disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-lg {
+    @apply min-h-14 text-base px-5;
+  }
+  .btn-primary {
+    @apply bg-peso text-white hover:bg-peso-deep
+           disabled:bg-line-strong disabled:text-white;
+  }
+  .btn-gcash {
+    @apply bg-gcash text-white hover:brightness-110
+           disabled:bg-line-strong disabled:text-white;
+  }
+  .btn-utang {
+    @apply bg-utang text-white hover:brightness-110
+           disabled:bg-line-strong disabled:text-white;
+  }
+  .btn-ghost {
+    @apply border border-line bg-surface text-ink hover:border-line-strong hover:bg-sunken;
+  }
+  .btn-outline {
+    @apply border border-peso/40 bg-peso-tint/40 text-peso-deep hover:bg-peso-tint;
+  }
+  .btn-danger {
+    @apply border border-danger/30 bg-surface text-danger hover:bg-danger-tint;
+  }
+
+  /* --- Status pills --- */
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1
+           text-xs font-semibold;
+  }
+  .pill-ok {
+    @apply bg-peso-tint text-peso-deep;
+  }
+  .pill-warn {
+    @apply bg-utang-tint text-utang;
+  }
+  .pill-bad {
+    @apply bg-danger-tint text-danger;
+  }
+  .pill-muted {
+    @apply bg-sunken text-muted;
+  }
+  .pill-dot {
+    @apply h-1.5 w-1.5 rounded-full bg-current;
+  }
+
+  /* --- Money readout --- */
+  .money {
+    @apply font-display tabular-nums tracking-tight;
+  }
+
+  /* --- Owner-panel stat card --- */
+  .stat {
+    @apply rounded-xl border border-line bg-surface p-3.5;
+  }
+  .stat-label {
+    @apply text-xs font-medium text-muted;
+  }
+  .stat-value {
+    @apply mt-1 font-display text-2xl font-bold tabular-nums tracking-tight text-ink;
+  }
+  .stat-sub {
+    @apply mt-1 text-xs text-faint;
+  }
+
+  /* --- Dark rail nav --- */
+  .rail-link {
+    @apply flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium
+           text-rail-text transition hover:bg-white/5 hover:text-white;
+  }
+  .rail-link.is-active {
+    @apply bg-white/[0.07] font-semibold text-white;
+  }
+  .rail-link.is-active .rail-icon {
+    @apply text-rail-active;
+  }
+  .rail-icon {
+    @apply h-5 w-5 flex-shrink-0 text-rail-muted;
+  }
+
+  /* --- Data tables (inventory / orders) --- */
+  .data-table {
+    @apply w-full border-collapse text-sm;
+  }
+  .data-table thead th {
+    @apply border-b border-line bg-sunken px-4 py-3 text-left text-xs
+           font-semibold uppercase tracking-wide text-muted;
+  }
+  .data-table tbody td {
+    @apply border-b border-line px-4 py-3 align-middle text-ink;
+  }
+  .data-table tbody tr:hover {
+    @apply bg-sunken/60;
+  }
+
+  /* --- Page scaffold --- */
+  .page {
+    @apply flex-1 overflow-auto bg-paper text-ink;
+  }
+  .page-inner {
+    @apply mx-auto w-full max-w-[1500px] p-4 lg:p-6;
+  }
+  .page-title {
+    @apply font-display text-2xl font-bold tracking-tight text-ink lg:text-3xl;
+  }
+}
+
+/* ============================================================
+   Scrollbars — quiet, on-paper
+   ============================================================ */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #1f2937;
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #4b5563;
-  border-radius: 4px;
+  background: #d5d3c6;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #bdbbac;
+  background-clip: content-box;
+}
+.on-ink ::-webkit-scrollbar-thumb {
+  background: #2c3a33;
+  background-clip: content-box;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
+/* ============================================================
+   Reduced motion — respect the user's setting
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

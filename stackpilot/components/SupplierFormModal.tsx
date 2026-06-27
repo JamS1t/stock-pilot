@@ -76,20 +76,20 @@ const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, onSave,
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4" onClick={onClose}>
             <div
-                className="bg-gray-800 rounded-xl shadow-2xl p-8 w-full max-w-lg border border-gray-700"
+                className="card w-full max-w-lg p-6 shadow-pop animate-fade-in"
                 onClick={e => e.stopPropagation()}
             >
-                <h2 className="text-2xl font-bold text-white mb-6">
-                    {supplier ? 'Edit Supplier' : 'Add New Supplier'}
+                <h2 className="font-display text-xl font-bold text-ink mb-6">
+                    {supplier ? 'Edit supplier' : 'Add supplier'}
                 </h2>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="md:col-span-2">
-                            <label htmlFor="name" className="block text-sm font-medium text-gray-400 mb-1">
-                                Supplier Name
+                            <label htmlFor="name" className="field-label">
+                                Supplier name
                             </label>
                             <input
                                 type="text"
@@ -99,13 +99,13 @@ const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, onSave,
                                 onChange={handleChange}
                                 required
                                 disabled={loading}
-                                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                                className="field"
                             />
                         </div>
 
                         <div>
-                            <label htmlFor="contact_person" className="block text-sm font-medium text-gray-400 mb-1">
-                                Contact Person (Optional)
+                            <label htmlFor="contact_person" className="field-label">
+                                Contact person (optional)
                             </label>
                             <input
                                 type="text"
@@ -114,13 +114,13 @@ const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, onSave,
                                 value={formData.contact_person}
                                 onChange={handleChange}
                                 disabled={loading}
-                                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                                className="field"
                             />
                         </div>
 
                         <div>
-                            <label htmlFor="phone" className="block text-sm font-medium text-gray-400 mb-1">
-                                Phone Number (Optional)
+                            <label htmlFor="phone" className="field-label">
+                                Phone number (optional)
                             </label>
                             <input
                                 type="tel"
@@ -129,13 +129,13 @@ const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, onSave,
                                 value={formData.phone}
                                 onChange={handleChange}
                                 disabled={loading}
-                                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                                className="field"
                             />
                         </div>
 
                         <div className="md:col-span-2">
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-400 mb-1">
-                                Email (Optional)
+                            <label htmlFor="email" className="field-label">
+                                Email (optional)
                             </label>
                             <input
                                 type="email"
@@ -144,13 +144,13 @@ const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, onSave,
                                 value={formData.email}
                                 onChange={handleChange}
                                 disabled={loading}
-                                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                                className="field"
                             />
                         </div>
 
                         <div className="md:col-span-2">
-                            <label htmlFor="address" className="block text-sm font-medium text-gray-400 mb-1">
-                                Address (Optional)
+                            <label htmlFor="address" className="field-label">
+                                Address (optional)
                             </label>
                             <input
                                 type="text"
@@ -159,19 +159,19 @@ const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, onSave,
                                 value={formData.address}
                                 onChange={handleChange}
                                 disabled={loading}
-                                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                                className="field"
                             />
                         </div>
                     </div>
 
-                    {error && <p className="text-sm text-red-400 text-center">{error}</p>}
+                    {error && <p className="text-sm text-danger text-center">{error}</p>}
 
-                    <div className="pt-4 flex justify-end space-x-3">
+                    <div className="pt-2 flex justify-end gap-3">
                         <button
                             type="button"
                             onClick={onClose}
                             disabled={loading}
-                            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors"
+                            className="btn btn-ghost"
                         >
                             Cancel
                         </button>
@@ -179,15 +179,15 @@ const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, onSave,
                         <button
                             type="submit"
                             disabled={loading}
-                            className="px-4 py-2 bg-sky-500 text-white font-semibold rounded-lg hover:bg-sky-600 transition-colors"
+                            className="btn btn-primary"
                         >
                             {loading ? (
                                 <div className="flex items-center">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                    <span className="ml-2">Saving...</span>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/40 border-t-white"></div>
+                                    <span className="ml-2">Saving…</span>
                                 </div>
                             ) : (
-                                'Save Supplier'
+                                'Save supplier'
                             )}
                         </button>
                     </div>

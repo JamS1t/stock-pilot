@@ -1,13 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ChartBarIcon,
-  ClockIcon,
-  Cog6ToothIcon,
-  PackageIcon,
-  ShoppingCartIcon,
-  TagIcon,
-  UsersIcon,
-} from "../components/icons";
+import { ShoppingCartIcon } from "../components/icons";
 import InvoiceModal from "../components/InvoiceModal";
 import { useAuth } from "../context/AuthContext";
 import { useFormatters } from "../format";
@@ -53,15 +45,6 @@ interface CounterCartItem {
   stock: number;
 }
 
-const secondaryLinks = [
-  { label: "Inventory", page: "inventory", icon: PackageIcon },
-  { label: "Reports", page: "reports", icon: ChartBarIcon },
-  { label: "Categories", page: "categories", icon: TagIcon },
-  { label: "Suppliers", page: "suppliers", icon: UsersIcon },
-  { label: "Orders", page: "order_history", icon: ClockIcon },
-  { label: "Settings", page: "settings", icon: Cog6ToothIcon },
-];
-
 const CounterDashboard: React.FC<CounterDashboardProps> = ({
   setActivePage,
 }) => {
@@ -86,6 +69,7 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderForReceipt, setOrderForReceipt] = useState<number | null>(null);
   const [todaySales, setTodaySales] = useState(0);
+  const [gcashSales, setGcashSales] = useState(0);
   const [expectedCash, setExpectedCash] = useState(0);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [openingCash, setOpeningCash] = useState("");
@@ -221,6 +205,13 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     [customers, selectedCustomerId]
   );
 
+  const utangOwed = useMemo(
+    () => whoOwes.reduce((sum, customer) => sum + Number(customer.balance || 0), 0),
+    [whoOwes]
+  );
+
+  const pendingSync = queueSummary.queued + queueSummary.failed;
+
   const addToCart = (product: Product) => {
     setCart((current) => {
       const existing = current.find(
@@ -318,6 +309,8 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
         setTodaySales((current) => current + subtotal);
         if (paymentMethod === "cash") {
           setExpectedCash((current) => current + subtotal);
+        } else {
+          setGcashSales((current) => current + subtotal);
         }
         setCart([]);
         setActionStatus(`${paymentMethod.toUpperCase()} sale queued offline.`);
@@ -331,6 +324,8 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
       setTodaySales((current) => current + subtotal);
       if (paymentMethod === "cash") {
         setExpectedCash((current) => current + subtotal);
+      } else {
+        setGcashSales((current) => current + subtotal);
       }
       setCart([]);
       setActionStatus(`${paymentMethod.toUpperCase()} sale recorded.`);
@@ -601,107 +596,136 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     }
   };
 
-  return (
-    <main className="flex-1 overflow-auto bg-neutral-950 text-white">
-      <div className="min-h-full p-4 lg:p-5">
-        <header className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <p className="text-sm font-medium text-emerald-300">
-              {store?.name || "StockPilot"}
-            </p>
-            <h1 className="text-2xl font-bold tracking-normal text-white lg:text-3xl">
-              Counter
-            </h1>
-          </div>
+  const kitaCells: { label: string; value: string; tone: string }[] = [
+    { label: "Benta ngayon", value: formatCurrency(todaySales), tone: "text-peso" },
+    { label: "Cash sa kahon", value: formatCurrency(expectedCash), tone: "text-ink" },
+    { label: "GCash", value: formatCurrency(gcashSales), tone: "text-gcash" },
+    { label: "Utang (open)", value: formatCurrency(utangOwed), tone: "text-utang" },
+  ];
 
-          <nav className="flex flex-wrap gap-2" aria-label="Secondary views">
-            {secondaryLinks.map(({ label, page, icon: Icon }) => (
-              <button
-                key={page}
-                onClick={() => setActivePage(page)}
-                className="flex min-h-11 items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm font-medium text-neutral-200 hover:border-emerald-500 hover:text-white"
-              >
-                <Icon className="h-4 w-4" />
-                <span>{label}</span>
-              </button>
-            ))}
-          </nav>
+  return (
+    <main className="page">
+      <div className="page-inner space-y-4 lg:space-y-5">
+        {/* Header */}
+        <header className="flex flex-wrap items-end justify-between gap-3 pl-12 lg:pl-0">
+          <div>
+            <p className="eyebrow">{store?.name || "Your store"}</p>
+            <h1 className="page-title mt-1">Counter</h1>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActivePage("legacy_pos")}
+            className="btn btn-ghost"
+          >
+            Legacy POS
+          </button>
         </header>
 
-        <section className="grid gap-4 xl:grid-cols-[minmax(320px,1.15fr)_minmax(360px,0.95fr)_minmax(280px,0.7fr)]">
-          <div className="min-h-[620px] rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold">Products</h2>
-                <p className="text-sm text-neutral-400">
-                  {loading ? "Loading items" : `${products.length} available`}
+        {/* Kita Bar — the money truth, beside the sync state that protects it */}
+        <section className="card animate-fade-in overflow-hidden">
+          <div className="flex flex-col lg:flex-row">
+            {kitaCells.map((cell) => (
+              <div
+                key={cell.label}
+                className="flex-1 border-b border-line p-4 last:border-b-0 lg:border-b-0 lg:border-r"
+              >
+                <p className="eyebrow">{cell.label}</p>
+                <p className={`money mt-1.5 text-2xl font-bold lg:text-[1.7rem] ${cell.tone}`}>
+                  {cell.value}
                 </p>
               </div>
-              <button
-                onClick={() => setActivePage("legacy_pos")}
-                className="min-h-11 rounded-lg border border-neutral-700 px-3 text-sm font-medium text-neutral-300 hover:border-amber-400 hover:text-white"
-              >
-                Old POS
-              </button>
+            ))}
+            <div className="flex flex-1 items-center justify-between gap-3 p-4">
+              <div>
+                <p className="eyebrow">Sync</p>
+                <p className="mt-1.5 font-display text-base font-semibold text-ink">
+                  {isOnline ? "Online" : "Offline"}
+                </p>
+              </div>
+              <span className={`pill ${pendingSync ? "pill-warn" : "pill-ok"}`}>
+                <span className="pill-dot" />
+                {pendingSync ? `${pendingSync} pending` : "All synced"}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Three-column counter */}
+        <section className="grid gap-4 xl:grid-cols-[minmax(320px,1.1fr)_minmax(360px,1fr)_minmax(300px,0.78fr)]">
+          {/* Products */}
+          <div className="card flex min-h-[620px] flex-col p-4 lg:p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-lg font-semibold text-ink">
+                  Mga produkto
+                </h2>
+                <p className="text-sm text-muted">
+                  {loading ? "Loading items…" : `${products.length} in stock`}
+                </p>
+              </div>
             </div>
 
             <input
               type="search"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search product name, SKU, barcode"
-              className="mb-4 min-h-12 w-full rounded-lg border border-neutral-700 bg-neutral-950 px-4 text-base text-white outline-none focus:border-emerald-400"
+              placeholder="Search name, SKU, or barcode"
+              className="field mb-4 min-h-12"
             />
 
             {error && (
-              <div className="mb-4 rounded-lg border border-red-500/40 bg-red-950/40 p-3 text-sm text-red-200">
+              <div className="mb-4 rounded-xl border border-danger/30 bg-danger-tint px-3.5 py-3 text-sm text-danger">
                 {error}
               </div>
             )}
 
-            <div className="grid max-h-[500px] grid-cols-1 gap-3 overflow-y-auto pr-1 md:grid-cols-2">
+            <div className="grid flex-1 grid-cols-2 content-start gap-3 overflow-y-auto pr-1">
               {products.map((product) => (
                 <button
                   key={product.product_id}
+                  type="button"
                   onClick={() => addToCart(product)}
-                  className="min-h-[96px] rounded-lg border border-neutral-800 bg-neutral-950 p-3 text-left hover:border-emerald-500 focus:border-emerald-400 focus:outline-none"
+                  className="flex min-h-[104px] flex-col justify-between rounded-xl border border-line bg-surface p-3 text-left transition hover:border-peso hover:shadow-card active:scale-[0.99]"
                 >
-                  <div className="flex h-full flex-col justify-between gap-3">
-                    <div>
-                      <p className="line-clamp-2 text-sm font-semibold text-white">
-                        {product.name}
-                      </p>
-                      <p className="mt-1 text-xs text-neutral-500">
-                        Stock {product.stock}
-                      </p>
-                    </div>
-                    <p className="text-base font-bold text-emerald-300">
+                  <p className="line-clamp-2 text-sm font-semibold text-ink">
+                    {product.name}
+                  </p>
+                  <div className="mt-2 flex items-end justify-between gap-2">
+                    <span className="text-xs text-faint">Stock {product.stock}</span>
+                    <span className="money text-base font-bold text-peso">
                       {formatCurrency(product.selling_price)}
-                    </p>
+                    </span>
                   </div>
                 </button>
               ))}
 
               {!loading && products.length === 0 && (
-                <div className="col-span-full flex min-h-[220px] items-center justify-center rounded-lg border border-dashed border-neutral-700 text-neutral-400">
-                  No products found
+                <div className="col-span-full flex min-h-[260px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-line-strong text-center">
+                  <p className="text-sm font-semibold text-muted">No products found</p>
+                  <p className="text-xs text-faint">
+                    Try another search, or add stock in Inventory.
+                  </p>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="min-h-[620px] rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+          {/* Current Sale */}
+          <div className="card flex min-h-[620px] flex-col p-4 lg:p-5">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold">Current Sale</h2>
-                <p className="text-sm text-neutral-400">
-                  {itemCount} items in cart
+                <h2 className="font-display text-lg font-semibold text-ink">
+                  Current sale
+                </h2>
+                <p className="text-sm text-muted">
+                  {itemCount} {itemCount === 1 ? "item" : "items"} in cart
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setCart([])}
                 disabled={cart.length === 0}
-                className="min-h-11 rounded-lg border border-neutral-700 px-3 text-sm font-medium text-neutral-300 hover:border-red-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="btn btn-ghost"
               >
                 Clear
               </button>
@@ -709,91 +733,91 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
 
             {(actionStatus || actionError) && (
               <div
-                className={`mb-4 rounded-lg border p-3 text-sm ${
+                className={`mb-4 rounded-xl border px-3.5 py-3 text-sm ${
                   actionError
-                    ? "border-red-500/40 bg-red-950/40 text-red-200"
-                    : "border-emerald-500/40 bg-emerald-950/40 text-emerald-200"
+                    ? "border-danger/30 bg-danger-tint text-danger"
+                    : "border-peso/30 bg-peso-tint text-peso-deep"
                 }`}
               >
                 {actionError || actionStatus}
               </div>
             )}
 
-            <div className="mb-4 max-h-[260px] space-y-3 overflow-y-auto pr-1">
+            <div className="mb-4 max-h-[280px] space-y-2.5 overflow-y-auto pr-1">
               {cart.map((item) => (
                 <div
                   key={item.product_id}
-                  className="rounded-lg border border-neutral-800 bg-neutral-950 p-3"
+                  className="rounded-xl border border-line bg-surface p-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-semibold">
+                      <p className="truncate font-semibold text-ink">
                         {item.product_name}
                       </p>
-                      <p className="text-sm text-neutral-400">
+                      <p className="money text-sm text-muted">
                         {formatCurrency(item.price_at_sale)}
                       </p>
                     </div>
-                    <p className="font-bold text-white">
+                    <p className="money font-bold text-ink">
                       {formatCurrency(item.price_at_sale * item.quantity)}
                     </p>
                   </div>
                   <div className="mt-3 flex items-center justify-between">
-                    <div className="flex items-center rounded-lg border border-neutral-700">
+                    <div className="flex items-center overflow-hidden rounded-xl border border-line">
                       <button
+                        type="button"
                         onClick={() => updateQuantity(item.product_id, -1)}
-                        className="min-h-11 min-w-11 text-xl text-neutral-200 hover:bg-neutral-800"
-                        aria-label={`Decrease ${item.product_name}`}
+                        className="flex min-h-11 min-w-11 items-center justify-center text-xl text-ink hover:bg-sunken"
+                        aria-label={`Less ${item.product_name}`}
                       >
-                        -
+                        −
                       </button>
-                      <span className="min-w-12 text-center font-semibold">
+                      <span className="money min-w-12 text-center font-semibold">
                         {item.quantity}
                       </span>
                       <button
+                        type="button"
                         onClick={() => updateQuantity(item.product_id, 1)}
-                        className="min-h-11 min-w-11 text-xl text-neutral-200 hover:bg-neutral-800"
-                        aria-label={`Increase ${item.product_name}`}
+                        className="flex min-h-11 min-w-11 items-center justify-center text-xl text-ink hover:bg-sunken"
+                        aria-label={`More ${item.product_name}`}
                       >
                         +
                       </button>
                     </div>
-                    <span className="text-sm text-neutral-500">
-                      Max {item.stock}
-                    </span>
+                    <span className="text-xs text-faint">Max {item.stock}</span>
                   </div>
                 </div>
               ))}
 
               {cart.length === 0 && (
-                <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-neutral-700 text-neutral-400">
-                  Cart is empty
+                <div className="flex min-h-[300px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-line-strong text-center">
+                  <p className="text-sm font-semibold text-muted">Cart is empty</p>
+                  <p className="text-xs text-faint">Tap a product to start a sale.</p>
                 </div>
               )}
             </div>
 
-            <div className="mb-4 rounded-lg border border-neutral-800 bg-neutral-950 p-3">
-              <div className="mb-3 grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto]">
+            {/* Suki / utang controls */}
+            <div className="card-sunken mb-4 p-3">
+              <p className="eyebrow mb-2.5">Suki ledger</p>
+              <div className="mb-2.5 grid grid-cols-[1fr_auto] gap-2">
                 <select
                   value={selectedCustomerId}
                   onChange={(event) => setSelectedCustomerId(event.target.value)}
-                  className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                  className="field field-sm"
                 >
-                  <option value="">Select customer for utang/bayad</option>
+                  <option value="">Pumili ng suki (utang / bayad)</option>
                   {customers.map((customer) => (
-                    <option
-                      key={customer.customer_id}
-                      value={customer.customer_id}
-                    >
+                    <option key={customer.customer_id} value={customer.customer_id}>
                       {customer.name}
                     </option>
                   ))}
                 </select>
-                <div className="rounded-lg border border-neutral-800 px-3 py-2 text-right">
-                  <p className="text-xs text-neutral-500">Balance</p>
-                  <p className="text-sm font-bold text-white">
+                <div className="flex min-w-[110px] flex-col justify-center rounded-xl border border-line bg-surface px-3 py-1.5 text-right">
+                  <span className="text-[0.65rem] font-medium text-muted">Balance</span>
+                  <span className="money text-sm font-bold text-utang">
                     {formatCurrency(customerBalance?.balance ?? 0)}
-                  </p>
+                  </span>
                 </div>
               </div>
 
@@ -801,20 +825,21 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
                 <input
                   value={newCustomerName}
                   onChange={(event) => setNewCustomerName(event.target.value)}
-                  placeholder="New customer name"
-                  className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                  placeholder="New suki name"
+                  className="field field-sm"
                 />
                 <div className="grid grid-cols-[1fr_auto] gap-2">
                   <input
                     value={newCustomerPhone}
                     onChange={(event) => setNewCustomerPhone(event.target.value)}
                     placeholder="Phone"
-                    className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                    className="field field-sm"
                   />
                   <button
+                    type="button"
                     onClick={handleCreateCustomer}
                     disabled={!newCustomerName.trim() || isSubmitting}
-                    className="min-h-11 rounded-lg bg-neutral-700 px-3 text-sm font-bold text-white hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="btn btn-ghost px-4"
                   >
                     Add
                   </button>
@@ -826,51 +851,54 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
                   value={ledgerNote}
                   onChange={(event) => setLedgerNote(event.target.value)}
                   placeholder="Ledger note"
-                  className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                  className="field field-sm"
                 />
                 <input
                   value={paymentAmount}
                   onChange={(event) => setPaymentAmount(event.target.value)}
-                  placeholder="Bayad"
+                  placeholder="Bayad ₱"
                   inputMode="decimal"
-                  className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                  className="field field-sm"
                 />
               </div>
             </div>
 
-            <div className="mt-auto rounded-lg border border-neutral-800 bg-neutral-950 p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-neutral-400">Total</span>
-                <span className="text-3xl font-bold text-white">
+            {/* Totals + actions */}
+            <div className="mt-auto rounded-xl border border-line bg-surface p-4">
+              <div className="mb-4 flex items-baseline justify-between">
+                <span className="text-sm font-medium text-muted">Total</span>
+                <span className="money text-3xl font-bold text-ink">
                   {formatCurrency(subtotal)}
                 </span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <button
+                  type="button"
                   onClick={() => handleSale("cash")}
                   disabled={cart.length === 0 || isSubmitting}
-                  className="min-h-12 rounded-lg bg-emerald-600 px-3 text-sm font-bold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+                  className="btn btn-primary btn-lg"
                 >
                   Cash
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleSale("gcash")}
                   disabled={cart.length === 0 || isSubmitting}
-                  className="min-h-12 rounded-lg bg-cyan-600 px-3 text-sm font-bold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+                  className="btn btn-gcash btn-lg"
                 >
                   GCash
                 </button>
                 <button
+                  type="button"
                   onClick={handleUtang}
-                  disabled={
-                    cart.length === 0 || !selectedCustomerId || isSubmitting
-                  }
-                  className="min-h-12 rounded-lg bg-amber-600 px-3 text-sm font-bold text-white hover:bg-amber-500 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+                  disabled={cart.length === 0 || !selectedCustomerId || isSubmitting}
+                  className="btn btn-utang btn-lg"
                 >
                   Utang
                 </button>
               </div>
               <button
+                type="button"
                 onClick={handleRecordPayment}
                 disabled={
                   !selectedCustomerId ||
@@ -878,78 +906,76 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
                   Number(paymentAmount) <= 0 ||
                   isSubmitting
                 }
-                className="mt-2 min-h-12 w-full rounded-lg border border-emerald-600 px-3 text-sm font-bold text-emerald-200 hover:bg-emerald-950 disabled:cursor-not-allowed disabled:border-neutral-700 disabled:text-neutral-500"
+                className="btn btn-outline mt-2 w-full"
               >
-                Record Bayad
+                Record bayad
               </button>
               {selectedCustomer && (
-                <p className="mt-2 text-xs text-neutral-500">
-                  Customer: {selectedCustomer.name}
+                <p className="mt-2 text-xs text-faint">
+                  Suki: {selectedCustomer.name}
                 </p>
               )}
             </div>
           </div>
 
-          <aside className="min-h-[620px] rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-            <div className="mb-4 flex items-center gap-3">
-              <ShoppingCartIcon className="h-6 w-6 text-emerald-300" />
-              <div>
-                <h2 className="text-lg font-semibold">Owner Panel</h2>
-                <p className="text-sm text-neutral-400">Today at a glance</p>
+          {/* Owner panel */}
+          <aside className="flex min-h-[620px] flex-col gap-4">
+            <div className="card p-4 lg:p-5">
+              <div className="mb-4 flex items-center gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-peso-tint text-peso">
+                  <ShoppingCartIcon className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="font-display text-lg font-semibold text-ink">
+                    Owner panel
+                  </h2>
+                  <p className="text-sm text-muted">Today at a glance</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="stat">
+                  <p className="stat-label">Benta</p>
+                  <p className="stat-value text-peso">{formatCurrency(todaySales)}</p>
+                  <p className="stat-sub">Sales this session</p>
+                </div>
+                <div className="stat">
+                  <p className="stat-label">Cash sa kahon</p>
+                  <p className="stat-value">{formatCurrency(expectedCash)}</p>
+                  <p className="stat-sub">Cash + bayad</p>
+                </div>
+                <div className="stat">
+                  <p className="stat-label">Paubos</p>
+                  <p className="stat-value">0</p>
+                  <p className="stat-sub">Low-stock items</p>
+                </div>
+                <div className="stat">
+                  <p className="stat-label">May utang</p>
+                  <p className="stat-value text-utang">{whoOwes.length}</p>
+                  <p className="stat-sub">
+                    {whoOwes.length
+                      ? `${whoOwes[0].name}: ${formatCurrency(whoOwes[0].balance)}`
+                      : "No open balances"}
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-3">
-              {[
-                [
-                  "Today Sales",
-                  formatCurrency(todaySales),
-                  "Counter sales this session",
-                ],
-                [
-                  "Expected Cash",
-                  formatCurrency(expectedCash),
-                  "Cash sales and bayad this session",
-                ],
-                ["Low Stock", "0 items", "Stock movement feed pending"],
-                [
-                  "Who Owes",
-                  `${whoOwes.length} customers`,
-                  whoOwes.length
-                    ? `${whoOwes[0].name}: ${formatCurrency(whoOwes[0].balance)}`
-                    : "No open balances",
-                ],
-              ].map(([label, value, detail]) => (
-                <div
-                  key={label}
-                  className="rounded-lg border border-neutral-800 bg-neutral-950 p-3"
-                >
-                  <p className="text-sm text-neutral-400">{label}</p>
-                  <p className="mt-1 text-xl font-bold text-white">{value}</p>
-                  <p className="mt-1 text-xs text-neutral-500">{detail}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 rounded-lg border border-neutral-800 bg-neutral-950 p-3">
+            {/* Cash session */}
+            <div className="card p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-white">
-                    Cash Session
+                  <p className="font-display text-base font-semibold text-ink">
+                    Cash session
                   </p>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-faint">
                     {cashSession
-                      ? `Open #${cashSession.cash_session_id}`
+                      ? `Open · #${cashSession.cash_session_id}`
                       : "No open session"}
                   </p>
                 </div>
-                <span
-                  className={`rounded-full px-2 py-1 text-xs font-bold ${
-                    cashSession
-                      ? "bg-emerald-500/20 text-emerald-200"
-                      : "bg-neutral-800 text-neutral-400"
-                  }`}
-                >
+                <span className={`pill ${cashSession ? "pill-ok" : "pill-muted"}`}>
+                  <span className="pill-dot" />
                   {cashSession ? "Open" : "Closed"}
                 </span>
               </div>
@@ -959,20 +985,21 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
                   <input
                     value={actualCash}
                     onChange={(event) => setActualCash(event.target.value)}
-                    placeholder="Actual cash count"
+                    placeholder="Bilang ng cash (actual)"
                     inputMode="decimal"
-                    className="min-h-11 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                    className="field field-sm"
                   />
                   <button
+                    type="button"
                     onClick={handleCloseCashSession}
                     disabled={
                       !Number.isFinite(Number(actualCash)) ||
                       Number(actualCash) < 0 ||
                       isSubmitting
                     }
-                    className="min-h-11 w-full rounded-lg bg-emerald-600 px-3 text-sm font-bold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+                    className="btn btn-primary w-full"
                   >
-                    Close Session
+                    Close session
                   </button>
                 </div>
               ) : (
@@ -982,16 +1009,17 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
                     onChange={(event) => setOpeningCash(event.target.value)}
                     placeholder="Opening cash"
                     inputMode="decimal"
-                    className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                    className="field field-sm"
                   />
                   <button
+                    type="button"
                     onClick={handleOpenCashSession}
                     disabled={
                       !Number.isFinite(Number(openingCash || 0)) ||
                       Number(openingCash || 0) < 0 ||
                       isSubmitting
                     }
-                    className="min-h-11 rounded-lg bg-neutral-700 px-3 text-sm font-bold text-white hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="btn btn-ghost px-4"
                   >
                     Open
                   </button>
@@ -999,24 +1027,23 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
               )}
             </div>
 
-            <div className="mt-4 rounded-lg border border-neutral-800 bg-neutral-950 p-3">
-              <p className="mb-3 text-sm font-semibold text-white">
-                Stock Adjustment
+            {/* Stock adjustment */}
+            <div className="card p-4">
+              <p className="font-display text-base font-semibold text-ink">
+                Stock adjustment
+              </p>
+              <p className="mb-3 text-xs text-faint">
+                Record a movement with a reason.
               </p>
               <div className="space-y-2">
                 <select
                   value={adjustmentProductId}
-                  onChange={(event) =>
-                    setAdjustmentProductId(event.target.value)
-                  }
-                  className="min-h-11 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                  onChange={(event) => setAdjustmentProductId(event.target.value)}
+                  className="field field-sm"
                 >
                   <option value="">Select product</option>
                   {products.map((product) => (
-                    <option
-                      key={product.product_id}
-                      value={product.product_id}
-                    >
+                    <option key={product.product_id} value={product.product_id}>
                       {product.name}
                     </option>
                   ))}
@@ -1027,16 +1054,14 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
                     onChange={(event) => setAdjustmentQty(event.target.value)}
                     placeholder="+/- quantity"
                     inputMode="decimal"
-                    className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                    className="field field-sm"
                   />
                   <select
                     value={adjustmentReason}
                     onChange={(event) =>
-                      setAdjustmentReason(
-                        event.target.value as StockMovementReason
-                      )
+                      setAdjustmentReason(event.target.value as StockMovementReason)
                     }
-                    className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                    className="field field-sm"
                   >
                     <option value="correction">Correction</option>
                     <option value="stock_in">Stock in</option>
@@ -1050,9 +1075,10 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
                   value={adjustmentNote}
                   onChange={(event) => setAdjustmentNote(event.target.value)}
                   placeholder="Reason note"
-                  className="min-h-11 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                  className="field field-sm"
                 />
                 <button
+                  type="button"
                   onClick={handleStockAdjustment}
                   disabled={
                     !adjustmentProductId ||
@@ -1060,68 +1086,62 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
                     Number(adjustmentQty) === 0 ||
                     isSubmitting
                   }
-                  className="min-h-11 w-full rounded-lg border border-neutral-700 px-3 text-sm font-bold text-neutral-200 hover:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="btn btn-ghost w-full"
                 >
-                  Record Movement
+                  Record movement
                 </button>
               </div>
             </div>
 
-            <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-950/30 p-3">
-              <p className="text-sm font-semibold text-amber-200">
-                Offline / Sync
-              </p>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-amber-100">
-                <div>
-                  <p className="text-xs text-amber-200/70">Status</p>
-                  <p className="font-semibold">
-                    {isOnline ? "Online" : "Offline"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-amber-200/70">Queued</p>
-                  <p className="font-semibold">{queueSummary.queued}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-amber-200/70">Failed</p>
-                  <p className="font-semibold">{queueSummary.failed}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-amber-200/70">Synced</p>
-                  <p className="font-semibold">{queueSummary.synced}</p>
-                </div>
+            {/* Offline / sync */}
+            <div className="card p-4">
+              <div className="flex items-center justify-between">
+                <p className="font-display text-base font-semibold text-ink">
+                  Offline &amp; sync
+                </p>
+                <span className={`pill ${isOnline ? "pill-ok" : "pill-warn"}`}>
+                  <span className="pill-dot" />
+                  {isOnline ? "Online" : "Offline"}
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                {[
+                  ["Queued", queueSummary.queued],
+                  ["Failed", queueSummary.failed],
+                  ["Synced", queueSummary.synced],
+                ].map(([label, value]) => (
+                  <div key={label} className="card-sunken py-2.5">
+                    <p className="money text-lg font-bold text-ink">{value}</p>
+                    <p className="text-[0.65rem] font-medium text-muted">{label}</p>
+                  </div>
+                ))}
               </div>
               <button
+                type="button"
                 onClick={handleRetrySync}
-                disabled={
-                  isSubmitting ||
-                  (!queueSummary.queued && !queueSummary.failed) ||
-                  !isOnline
-                }
-                className="mt-3 min-h-11 w-full rounded-lg border border-amber-400/60 px-3 text-sm font-bold text-amber-100 hover:bg-amber-900/50 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={isSubmitting || (!queueSummary.queued && !queueSummary.failed) || !isOnline}
+                className="btn btn-ghost mt-3 w-full"
               >
-                Retry Sync
+                Retry sync
               </button>
             </div>
 
+            {/* Who owes */}
             {whoOwes.length > 0 && (
-              <div className="mt-4 rounded-lg border border-neutral-800 bg-neutral-950 p-3">
-                <p className="mb-2 text-sm font-semibold text-white">
-                  Who Owes
+              <div className="card p-4">
+                <p className="font-display text-base font-semibold text-ink">
+                  Sino may utang
                 </p>
-                <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
-                  {whoOwes.slice(0, 5).map((customer) => (
+                <div className="mt-3 max-h-48 space-y-2 overflow-y-auto pr-1">
+                  {whoOwes.slice(0, 6).map((customer) => (
                     <button
                       key={customer.customer_id}
-                      onClick={() =>
-                        setSelectedCustomerId(String(customer.customer_id))
-                      }
-                      className="flex min-h-11 w-full items-center justify-between rounded-lg border border-neutral-800 px-3 text-left hover:border-amber-400"
+                      type="button"
+                      onClick={() => setSelectedCustomerId(String(customer.customer_id))}
+                      className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-line px-3 text-left transition hover:border-utang hover:bg-utang-tint/40"
                     >
-                      <span className="truncate text-sm text-neutral-200">
-                        {customer.name}
-                      </span>
-                      <span className="text-sm font-bold text-amber-200">
+                      <span className="truncate text-sm text-ink">{customer.name}</span>
+                      <span className="money text-sm font-bold text-utang">
                         {formatCurrency(customer.balance)}
                       </span>
                     </button>

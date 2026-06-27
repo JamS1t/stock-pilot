@@ -108,69 +108,76 @@
 
       if (loading) {
           return (
-              <main className="flex-1 p-4 sm:p-6 lg:p-8 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
-                  <p className="ml-3 text-sky-400">Loading categories...</p>
+              <main className="page flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-peso"></div>
+                  <p className="ml-3 text-muted">Loading categories…</p>
               </main>
           );
       }
 
       if (error) {
           return (
-              <main className="flex-1 p-4 sm:p-6 lg:p-8 flex items-center justify-center text-red-400">
-                  <p>Error: {error}</p>
-                  <button onClick={fetchCategories} className="ml-4 px-4 py-2 bg-sky-600 text-white rounded-md">Retry</button>
+              <main className="page flex items-center justify-center">
+                  <div className="card flex items-center gap-4 p-6">
+                      <p className="text-sm text-danger">{error}</p>
+                      <button onClick={fetchCategories} className="btn btn-primary">Retry</button>
+                  </div>
               </main>
           );
       }
 
       return (
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-              <header className="mb-8 flex justify-between items-center">
-                  <div>
-                      <h1 className="text-3xl font-bold text-white tracking-tight">Category Management</h1>
-                      <p className="text-gray-400">Add, edit, and manage product categories.</p>
-                  </div>
-                  <button 
-                      onClick={handleOpenModalForCreate}
-                      className="flex items-center space-x-2 bg-sky-500 text-white font-bold px-4 py-2 rounded-lg hover:bg-sky-600 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-sky-500/20"
-                  >
-                      <PlusCircleIcon className="w-5 h-5"/>
-                      <span>Add Category</span>
-                  </button>
-              </header>
-              
-              <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
-                  <div className="overflow-x-auto">
-                      <table className="w-full text-sm text-left text-gray-400">
-                          <thead className="text-xs text-gray-300 uppercase bg-gray-700/50">
-                              <tr>
-                                  <th scope="col" className="px-6 py-3">Category Name</th>
-                                  <th scope="col" className="px-6 py-3 text-center">Actions</th>
-                              </tr>
-                          </thead>
-                          <tbody>
-                              {categories.length === 0 ? (
+          <main className="page">
+              <div className="page-inner space-y-4 lg:space-y-5">
+                  <header className="flex flex-wrap items-end justify-between gap-3 pl-12 lg:pl-0">
+                      <div>
+                          <p className="eyebrow">Stock</p>
+                          <h1 className="page-title mt-1">Categories</h1>
+                          <p className="mt-1 text-sm text-muted">Ayusin ang mga grupo ng produkto.</p>
+                      </div>
+                      <button
+                          onClick={handleOpenModalForCreate}
+                          className="btn btn-primary"
+                      >
+                          <PlusCircleIcon className="w-5 h-5"/>
+                          <span>Add category</span>
+                      </button>
+                  </header>
+
+                  <div className="card overflow-hidden">
+                      <div className="overflow-x-auto">
+                          <table className="data-table">
+                              <thead>
                                   <tr>
-                                      <td colSpan={2} className="px-6 py-4 text-center text-gray-500">No categories found.</td>
+                                      <th scope="col">Category name</th>
+                                      <th scope="col" className="text-center">Actions</th>
                                   </tr>
-                              ) : (
-                                  categories.map((category) => (
-                                      <tr key={category.category_id} className="border-b border-gray-700 hover:bg-gray-700/50">
-                                          <td className="px-6 py-4 font-medium text-white">{category.name}</td>
-                                          <td className="px-6 py-4 text-center">
-                                              <div className="flex items-center justify-center space-x-2">
-                                                  <button onClick={() => handleOpenModalForEdit(category)} className="p-2 text-yellow-400 rounded-full hover:bg-yellow-400/10"><EditIcon /></button>
-                                                  <button onClick={() => handleDeleteConfirmation(category.category_id)} className="p-2 text-red-400 rounded-full hover:bg-red-400/10"><TrashIcon /></button>
-                                              </div>
+                              </thead>
+                              <tbody>
+                                  {categories.length === 0 ? (
+                                      <tr>
+                                          <td colSpan={2} className="py-10 text-center">
+                                              <p className="text-sm font-semibold text-muted">No categories yet</p>
+                                              <p className="mt-1 text-xs text-faint">Add your first category to group your products.</p>
                                           </td>
                                       </tr>
-                                  ))
-                              )}
-                          </tbody>
-                      </table>
+                                  ) : (
+                                      categories.map((category) => (
+                                          <tr key={category.category_id}>
+                                              <td className="font-semibold text-ink">{category.name}</td>
+                                              <td className="text-center">
+                                                  <div className="flex items-center justify-center gap-1">
+                                                      <button onClick={() => handleOpenModalForEdit(category)} aria-label="Edit category" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-muted transition-colors hover:bg-sunken hover:text-ink"><EditIcon /></button>
+                                                      <button onClick={() => handleDeleteConfirmation(category.category_id)} aria-label="Delete category" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-danger transition-colors hover:bg-danger-tint"><TrashIcon /></button>
+                                                  </div>
+                                              </td>
+                                          </tr>
+                                      ))
+                                  )}
+                              </tbody>
+                          </table>
+                      </div>
                   </div>
-              </div>
 
               {isFormModalOpen && (
                   <CategoryFormModal
@@ -188,6 +195,7 @@
                   onConfirm={confirmModalContent.onConfirm}
                   onCancel={handleCancelConfirmation}
               />
+              </div>
           </main>
       );
   };

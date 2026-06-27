@@ -43,9 +43,9 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ orderId, onClose }) => {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-xl p-6 text-white shadow-lg">
-          <p>Loading invoice...</p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4">
+        <div className="card p-6 shadow-pop">
+          <p className="text-sm text-muted">Loading resibo…</p>
         </div>
       </div>
     );
@@ -53,12 +53,12 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ orderId, onClose }) => {
 
   if (error) {
     return (
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-xl p-6 text-white shadow-lg">
-          <p className="text-red-400">{error}</p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4">
+        <div className="card p-6 shadow-pop">
+          <p className="text-sm text-danger">{error}</p>
           <button
             onClick={onClose}
-            className="mt-4 px-4 py-2 bg-sky-600 rounded-md hover:bg-sky-500"
+            className="btn btn-ghost mt-4"
           >
             Close
           </button>
@@ -69,12 +69,12 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ orderId, onClose }) => {
 
   if (!invoice) {
     return (
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-xl p-6 text-white shadow-lg">
-          <p>No invoice found.</p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4">
+        <div className="card p-6 shadow-pop">
+          <p className="text-sm text-muted">Walang nahanap na resibo.</p>
           <button
             onClick={onClose}
-            className="mt-4 px-4 py-2 bg-sky-600 rounded-md hover:bg-sky-500"
+            className="btn btn-ghost mt-4"
           >
             Close
           </button>
@@ -86,7 +86,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ orderId, onClose }) => {
   const { header, items, totals } = invoice;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4">
       {/* ✅ Print Styles */}
       <style>
         {`
@@ -127,63 +127,61 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ orderId, onClose }) => {
         `}
       </style>
 
-      <div className="bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg border border-gray-700 invoice-container print-bg-white">
+      <div className="card w-full max-w-lg shadow-pop animate-fade-in invoice-container print-bg-white">
         <div className="p-8">
           {/* Header */}
           <div className="flex justify-between items-start mb-6">
             <div>
               <div className="flex items-center space-x-3 mb-2">
                 <img src="/stockpilot-logo.png" alt="Logo" width="40" />
-                <h1 className="text-2xl font-bold text-white tracking-tight print-text-black">
-                  Stock<span className="text-sky-400">Pilot</span>
+                <h1 className="font-display text-2xl font-bold tracking-tight text-ink print-text-black">
+                  Stock<span className="text-peso">Pilot</span>
                 </h1>
               </div>
-              <p className="text-sm text-gray-400 print-text-gray">
-                Invoice #{header?.invoice_number ?? orderId}
+              <p className="text-sm text-muted print-text-gray">
+                Resibo #{header?.invoice_number ?? orderId}
               </p>
-              <p className="text-sm text-gray-400 print-text-gray">
+              <p className="text-sm text-muted print-text-gray">
                 Date: {formatLocalDate(header?.date)}
               </p>
             </div>
             <div className="text-right">
-              <h2 className="text-lg font-semibold text-white print-text-black">
-                RECEIPT
-              </h2>
+              <p className="eyebrow print-text-gray">Resibo</p>
             </div>
           </div>
 
           {/* Items Table */}
-          <div className="max-h-60 overflow-y-auto border-t border-b border-gray-600 print-border-gray py-2 my-4">
+          <div className="max-h-60 overflow-y-auto border-t border-b border-line print-border-gray py-2 my-4">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-600 print-border-gray">
-                  <th className="text-left font-semibold text-white print-text-black py-2">
+                <tr className="border-b border-line print-border-gray">
+                  <th className="py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted print-text-black">
                     Item
                   </th>
-                  <th className="text-center font-semibold text-white print-text-black py-2">
+                  <th className="py-2 text-center text-xs font-semibold uppercase tracking-wide text-muted print-text-black">
                     Qty
                   </th>
-                  <th className="text-right font-semibold text-white print-text-black py-2">
+                  <th className="py-2 text-right text-xs font-semibold uppercase tracking-wide text-muted print-text-black">
                     Price
                   </th>
-                  <th className="text-right font-semibold text-white print-text-black py-2">
+                  <th className="py-2 text-right text-xs font-semibold uppercase tracking-wide text-muted print-text-black">
                     Total
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {items?.map((item: any, idx: number) => (
-                  <tr key={idx}>
-                    <td className="py-2 text-gray-300 print-text-gray">
+                  <tr key={idx} className="border-b border-line/60 print-border-gray last:border-0">
+                    <td className="py-2 text-ink print-text-gray">
                       {item.item}
                     </td>
-                    <td className="text-center py-2 text-gray-300 print-text-gray">
+                    <td className="money py-2 text-center text-muted print-text-gray">
                       {item.qty}
                     </td>
-                    <td className="text-right py-2 text-gray-300 print-text-gray">
+                    <td className="money py-2 text-right text-muted print-text-gray">
                       {formatCurrency(item.price)}
                     </td>
-                    <td className="text-right py-2 text-gray-300 print-text-gray">
+                    <td className="money py-2 text-right text-ink print-text-gray">
                       {formatCurrency(item.total)}
                     </td>
                   </tr>
@@ -194,38 +192,38 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ orderId, onClose }) => {
 
           {/* Totals */}
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between text-gray-400 print-text-gray">
+            <div className="flex justify-between text-muted print-text-gray">
               <span>Subtotal</span>
-              <span>{formatCurrency(totals?.subtotal ?? 0)}</span>
+              <span className="money">{formatCurrency(totals?.subtotal ?? 0)}</span>
             </div>
             {totals?.discount > 0 && (
-              <div className="flex justify-between text-gray-400 print-text-gray">
+              <div className="flex justify-between text-muted print-text-gray">
                 <span>Discount</span>
-                <span>-{formatCurrency(totals.discount)}</span>
+                <span className="money">-{formatCurrency(totals.discount)}</span>
               </div>
             )}
-            <div className="flex justify-between font-bold text-lg text-white pt-2 border-t border-gray-600 print-text-black print-border-gray">
-              <span>Total</span>
-              <span>{formatCurrency(totals?.total ?? 0)}</span>
+            <div className="flex justify-between items-baseline pt-3 mt-1 border-t border-line-strong print-text-black print-border-gray">
+              <span className="font-display text-base font-semibold text-ink">Total</span>
+              <span className="money text-2xl font-bold text-peso">{formatCurrency(totals?.total ?? 0)}</span>
             </div>
           </div>
 
-          <p className="text-center text-xs text-gray-500 mt-6 print-text-gray">
-            Thank you for your business!
+          <p className="text-center text-xs text-faint mt-6 print-text-gray">
+            Salamat sa pagtangkilik!
           </p>
         </div>
 
         {/* Buttons */}
-        <div className="bg-gray-700/50 p-4 flex justify-end space-x-3 rounded-b-xl no-print">
+        <div className="flex justify-end gap-3 rounded-b-2xl border-t border-line bg-sunken p-4 no-print">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors"
+            className="btn btn-ghost"
           >
             Close
           </button>
           <button
             onClick={handlePrint}
-            className="px-4 py-2 bg-sky-500 text-white font-semibold rounded-lg hover:bg-sky-600 transition-colors"
+            className="btn btn-primary"
           >
             Print
           </button>

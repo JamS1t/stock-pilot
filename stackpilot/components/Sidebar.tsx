@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ShoppingCartIcon,
   PackageIcon,
@@ -7,7 +7,7 @@ import {
   UsersIcon,
   Cog6ToothIcon,
   ArrowLeftOnRectangleIcon,
-  ClockIcon
+  ClockIcon,
 } from './icons';
 import { useAuth } from '../context/AuthContext';
 
@@ -16,91 +16,126 @@ interface SidebarProps {
   setActivePage: (page: string) => void;
 }
 
-const NavLink: React.FC<{
+interface NavItem {
   icon: React.ElementType;
   label: string;
-  pageName: string;
+  page: string;
+}
+
+const primaryNav: NavItem[] = [
+  { icon: ShoppingCartIcon, label: 'Counter', page: 'counter' },
+  { icon: PackageIcon, label: 'Inventory', page: 'inventory' },
+  { icon: UsersIcon, label: 'Suppliers', page: 'suppliers' },
+  { icon: ChartBarIcon, label: 'Reports', page: 'reports' },
+];
+
+const secondaryNav: NavItem[] = [
+  { icon: TagIcon, label: 'Categories', page: 'categories' },
+  { icon: ClockIcon, label: 'Order history', page: 'order_history' },
+];
+
+const NavLink: React.FC<{
+  item: NavItem;
   activePage: string;
+  collapsed: boolean;
   onClick: () => void;
-  isCollapsed: boolean;
-}> = ({ icon: Icon, label, pageName, activePage, onClick, isCollapsed }) => {
-  const isActive = activePage === pageName;
+}> = ({ item, activePage, collapsed, onClick }) => {
+  const isActive = activePage === item.page;
+  const Icon = item.icon;
   return (
-    <a
-      href="#"
-      onClick={(e) => {
-        e.preventDefault();
-        onClick();
-      }}
-      className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} px-3 py-2.5 rounded-lg transition-all duration-200 ${
-        isActive
-          ? 'bg-sky-500/20 text-sky-400 font-semibold'
-          : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={isActive ? 'page' : undefined}
+      title={collapsed ? item.label : undefined}
+      className={`rail-link w-full ${collapsed ? 'justify-center px-0' : ''} ${
+        isActive ? 'is-active' : ''
       }`}
-      title={isCollapsed ? label : ''}
     >
-      <Icon className="w-5 h-5 flex-shrink-0" />
-      {!isCollapsed && <span>{label}</span>}
-    </a>
+      <Icon className="rail-icon" />
+      {!collapsed && <span className="truncate">{item.label}</span>}
+    </button>
   );
 };
 
 const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage }) => {
   const { user, store, logout } = useAuth();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [online, setOnline] = useState(
+    typeof navigator === 'undefined' ? true : navigator.onLine
+  );
+
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
+  const go = (page: string) => {
+    setActivePage(page);
+    setMobileOpen(false);
+  };
 
   return (
     <>
-      {/* Mobile Menu Button */}
+      {/* Mobile menu button */}
       <button
-        onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-gray-900 text-white rounded-lg border border-gray-700 hover:bg-gray-800"
-        aria-label="Toggle menu"
+        type="button"
+        onClick={() => setMobileOpen((v) => !v)}
+        className="fixed left-4 top-4 z-50 flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-surface text-ink shadow-card lg:hidden"
+        aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          {isMobileOpen ? (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          {mobileOpen ? (
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           ) : (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
           )}
         </svg>
       </button>
 
-      {/* Mobile Overlay */}
-      {isMobileOpen && (
+      {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-30"
-          onClick={() => setIsMobileOpen(false)}
+          className="fixed inset-0 z-30 bg-ink/50 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
       <aside
-        className={`${
-          isCollapsed ? 'w-20' : 'w-64'
-        } bg-gray-900 text-white flex flex-col p-4 border-r border-gray-800 transition-all duration-300 fixed lg:relative h-full z-40 ${
-          isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        } relative`}
+        className={`on-ink fixed z-40 flex h-full flex-col bg-ink shadow-rail transition-all duration-300 lg:relative ${
+          collapsed ? 'w-20' : 'w-64'
+        } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
-        {/* Logo + App Name */}
-        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} mb-6 p-2`}>
-          <img src="/stockpilot-logo.png" alt="Logo" width="40" className="flex-shrink-0" />
-          {!isCollapsed && (
-            <span className="text-2xl font-bold tracking-tight">
-              Stock<span className="text-sky-400">Pilot</span>
-            </span>
+        {/* Brand */}
+        <div className={`flex items-center gap-3 px-5 pb-5 pt-6 ${collapsed ? 'justify-center px-0' : ''}`}>
+          <img src="/stockpilot-logo.png" alt="" width={34} height={34} className="flex-shrink-0" />
+          {!collapsed && (
+            <div className="leading-tight">
+              <div className="font-display text-lg font-bold tracking-tight text-white">
+                StockPilot
+              </div>
+              <div className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-rail-active">
+                Counter&nbsp;AI
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Desktop Collapse Toggle - Positioned absolutely */}
+        {/* Collapse toggle (desktop) */}
         <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden lg:flex items-center justify-center absolute -right-3 top-8 w-6 h-6 bg-gray-800 border border-gray-700 rounded-full text-gray-400 hover:text-sky-400 hover:border-sky-400 transition-all duration-200 shadow-lg hover:shadow-sky-400/20"
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          type="button"
+          onClick={() => setCollapsed((v) => !v)}
+          className="absolute -right-3 top-9 hidden h-6 w-6 items-center justify-center rounded-full border border-line bg-surface text-muted shadow-card transition hover:text-peso lg:flex"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <svg
-            className={`w-3.5 h-3.5 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`}
+            className={`h-3.5 w-3.5 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -110,38 +145,67 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage }) => {
           </svg>
         </button>
 
-        {/* User and Store Info */}
-        {user && store && !isCollapsed && (
-          <div className="mb-8 bg-gray-800/50 rounded-xl p-3 text-sm border border-gray-700">
-            <div className="font-semibold text-sky-400 truncate">{store.name}</div>
-            <div className="text-gray-300 truncate mt-1">{user.name}</div>
-            <div className="text-gray-500 truncate text-xs">{user.email}</div>
-          </div>
-        )}
-
-        {/* Collapsed User Icon */}
-        {user && store && isCollapsed && (
-          <div className="mb-8 flex justify-center">
-            <div className="w-10 h-10 bg-sky-500/20 rounded-full flex items-center justify-center text-sky-400 font-bold">
-              {store.name.charAt(0).toUpperCase()}
-            </div>
+        {/* Store / user card */}
+        {store && (
+          <div className={`mb-2 px-3 ${collapsed ? 'flex justify-center px-0' : ''}`}>
+            {collapsed ? (
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rail-active/20 font-display text-base font-bold text-rail-active">
+                {store.name.charAt(0).toUpperCase()}
+              </div>
+            ) : (
+              <div className="rounded-xl bg-white/[0.04] px-3 py-2.5">
+                <div className="truncate text-sm font-semibold text-white">{store.name}</div>
+                {user && (
+                  <div className="truncate text-xs text-rail-muted">{user.name}</div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-2">
-          <NavLink icon={ShoppingCartIcon} label="Counter" pageName="counter" activePage={activePage} onClick={() => { setActivePage('counter'); setIsMobileOpen(false); }} isCollapsed={isCollapsed} />
-          <NavLink icon={PackageIcon} label="Inventory" pageName="inventory" activePage={activePage} onClick={() => { setActivePage('inventory'); setIsMobileOpen(false); }} isCollapsed={isCollapsed} />
-          <NavLink icon={ChartBarIcon} label="Reports" pageName="reports" activePage={activePage} onClick={() => { setActivePage('reports'); setIsMobileOpen(false); }} isCollapsed={isCollapsed} />
-          <NavLink icon={TagIcon} label="Categories" pageName="categories" activePage={activePage} onClick={() => { setActivePage('categories'); setIsMobileOpen(false); }} isCollapsed={isCollapsed} />
-          <NavLink icon={UsersIcon} label="Suppliers" pageName="suppliers" activePage={activePage} onClick={() => { setActivePage('suppliers'); setIsMobileOpen(false); }} isCollapsed={isCollapsed} />
-          <NavLink icon={ClockIcon} label="Order History" pageName="order_history" activePage={activePage} onClick={() => { setActivePage('order_history'); setIsMobileOpen(false); }} isCollapsed={isCollapsed} />
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
+          {!collapsed && <p className="px-3 pb-1 pt-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-rail-muted">Counter</p>}
+          {primaryNav.map((item) => (
+            <NavLink key={item.page} item={item} activePage={activePage} collapsed={collapsed} onClick={() => go(item.page)} />
+          ))}
+
+          {!collapsed && <p className="px-3 pb-1 pt-4 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-rail-muted">Catalog</p>}
+          {secondaryNav.map((item) => (
+            <NavLink key={item.page} item={item} activePage={activePage} collapsed={collapsed} onClick={() => go(item.page)} />
+          ))}
         </nav>
 
-        {/* Footer Links */}
-        <div className="mt-auto space-y-2">
-          <NavLink icon={Cog6ToothIcon} label="Settings" pageName="settings" activePage={activePage} onClick={() => { setActivePage('settings'); setIsMobileOpen(false); }} isCollapsed={isCollapsed} />
-          <NavLink icon={ArrowLeftOnRectangleIcon} label="Logout" pageName="logout" activePage={activePage} onClick={() => { logout(); setIsMobileOpen(false); }} isCollapsed={isCollapsed} />
+        {/* Connection state */}
+        <div className={`px-3 ${collapsed ? 'flex justify-center px-0' : ''}`}>
+          <div
+            className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold ${
+              online ? 'bg-rail-active/15 text-rail-active' : 'bg-utang/20 text-utang-tint'
+            } ${collapsed ? 'justify-center px-0' : ''}`}
+            title={online ? 'Online — changes sync live' : 'Offline — saving locally'}
+          >
+            <span className={`h-2 w-2 flex-shrink-0 rounded-full ${online ? 'bg-rail-active' : 'animate-pulse-soft bg-utang'}`} />
+            {!collapsed && <span>{online ? 'Online' : 'Offline — saving locally'}</span>}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-2 space-y-1 border-t border-white/5 px-3 py-3">
+          <NavLink
+            item={{ icon: Cog6ToothIcon, label: 'Settings', page: 'settings' }}
+            activePage={activePage}
+            collapsed={collapsed}
+            onClick={() => go('settings')}
+          />
+          <button
+            type="button"
+            onClick={logout}
+            title={collapsed ? 'Log out' : undefined}
+            className={`rail-link w-full hover:bg-danger/15 hover:text-danger-tint ${collapsed ? 'justify-center px-0' : ''}`}
+          >
+            <ArrowLeftOnRectangleIcon className="rail-icon" />
+            {!collapsed && <span>Log out</span>}
+          </button>
         </div>
       </aside>
     </>

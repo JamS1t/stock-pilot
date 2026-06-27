@@ -55,12 +55,12 @@ const CategoryFormModal: React.FC<CategoryFormModalProps> = ({ category, onSave,
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
-            <div className="bg-gray-800 rounded-xl shadow-2xl p-8 w-full max-w-md border border-gray-700" onClick={e => e.stopPropagation()}>
-                <h2 className="text-2xl font-bold text-white mb-6">{category ? 'Edit Category' : 'Add New Category'}</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4" onClick={onClose}>
+            <div className="card w-full max-w-md p-6 shadow-pop animate-fade-in" onClick={e => e.stopPropagation()}>
+                <h2 className="font-display text-xl font-bold text-ink mb-5">{category ? 'Edit category' : 'Add new category'}</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-400 mb-1">Category Name</label>
+                        <label htmlFor="name" className="field-label">Category name</label>
                         <input
                             type="text"
                             name="name"
@@ -69,20 +69,20 @@ const CategoryFormModal: React.FC<CategoryFormModalProps> = ({ category, onSave,
                             onChange={(e) => setName(e.target.value)}
                             required
                             disabled={loading}
-                            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                            className="field"
                         />
                     </div>
-                    {error && <p className="text-sm text-red-400 text-center">{error}</p>}
-                    <div className="pt-4 flex justify-end space-x-3">
-                        <button type="button" onClick={onClose} disabled={loading} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
-                        <button type="submit" disabled={loading} className="px-4 py-2 bg-sky-500 text-white font-semibold rounded-lg hover:bg-sky-600 transition-colors">
+                    {error && <div className="rounded-xl border border-danger/30 bg-danger-tint px-3.5 py-3 text-sm text-danger">{error}</div>}
+                    <div className="pt-2 flex justify-end gap-3">
+                        <button type="button" onClick={onClose} disabled={loading} className="btn btn-ghost">Cancel</button>
+                        <button type="submit" disabled={loading} className="btn btn-primary">
                             {loading ? (
                                 <div className="flex items-center">
                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                    <span className="ml-2">Saving...</span>
+                                    <span className="ml-2">Saving…</span>
                                 </div>
                             ) : (
-                                'Save Category'
+                                'Save category'
                             )}
                         </button>
                     </div>

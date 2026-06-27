@@ -1,6 +1,10 @@
 import { getAuthContext } from "@/context/AuthContext";
 
-const API_BASE_URL =  "https://stock-pilot-production.up.railway.app/api";
+// Configurable per environment. In dev, `.env.development` points this at the
+// local backend (http://localhost:5000/api). Production builds fall back to Railway.
+const API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
+  "https://stock-pilot-production.up.railway.app/api";
 
 let refreshPromise: Promise<string | null> | null = null;
 

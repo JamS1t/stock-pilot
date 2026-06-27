@@ -159,9 +159,9 @@ const InventoryPage: React.FC = () => {
   // === Loading State ===
   if (loading && products.length === 0) {
     return (
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
-        <p className="ml-3 text-sky-400">Loading inventory...</p>
+      <main className="page flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-peso"></div>
+        <p className="ml-3 text-muted">Loading inventory…</p>
       </main>
     );
   }
@@ -169,95 +169,101 @@ const InventoryPage: React.FC = () => {
   // === Error State ===
   if (error) {
     return (
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 flex items-center justify-center text-red-400">
-        <p>Error: {error}</p>
-        <button
-          onClick={fetchInventoryData}
-          className="ml-4 px-4 py-2 bg-sky-600 text-white rounded-md"
-        >
-          Retry
-        </button>
+      <main className="page flex items-center justify-center">
+        <div className="card flex items-center gap-4 p-6">
+          <p className="text-sm text-danger">{error}</p>
+          <button onClick={fetchInventoryData} className="btn btn-primary">
+            Retry
+          </button>
+        </div>
       </main>
     );
   }
 
   // === Main Layout ===
   return (
-    <main className="flex-1 p-4 sm:p-6 lg:p-8 flex flex-col overflow-hidden">
-      <header className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">
-            Inventory Management
-          </h1>
-          <p className="text-gray-400">Add, edit, and remove products.</p>
-        </div>
-        <button
-          onClick={handleOpenModalForCreate}
-          className="flex items-center space-x-2 bg-sky-500 text-white font-bold px-4 py-2 rounded-lg hover:bg-sky-600 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-sky-500/20"
-        >
-          <PlusCircleIcon className="w-5 h-5" />
-          <span>Add Product</span>
-        </button>
-      </header>
+    <main className="page">
+      <div className="page-inner flex flex-col space-y-4 lg:space-y-5">
+        <header className="flex flex-wrap items-end justify-between gap-3 pl-12 lg:pl-0">
+          <div>
+            <p className="eyebrow">Stock</p>
+            <h1 className="page-title mt-1">Inventory</h1>
+            <p className="mt-1 text-sm text-muted">
+              Add, edit, at i-track ang mga produkto.
+            </p>
+          </div>
+          <button
+            onClick={handleOpenModalForCreate}
+            className="btn btn-primary"
+          >
+            <PlusCircleIcon className="w-5 h-5" />
+            <span>Add product</span>
+          </button>
+        </header>
 
-      <div className="bg-gray-800 p-6 rounded-xl shadow-lg flex-1 flex flex-col overflow-hidden">
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <input
-            type="text"
-            placeholder="Search by name or SKU..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
-          />
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
-          >
-            <option value="">All Categories</option>
-            {categories.map((c) => (
-              <option key={c.category_id} value={c.category_id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={supplierFilter}
-            onChange={(e) => setSupplierFilter(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
-          >
-            <option value="">All Suppliers</option>
-            {suppliers.map((s) => (
-              <option key={s.supplier_id} value={s.supplier_id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={stockStatusFilter}
-            onChange={(e) => setStockStatusFilter(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
-          >
-            <option value="">All Stock Statuses</option>
-            <option value="In Stock">In Stock</option>
-            <option value="Low Stock">Low Stock</option>
-            <option value="Out of Stock">Out of Stock</option>
-          </select>
-        </div>
+        <div className="card flex flex-1 flex-col overflow-hidden p-4 lg:p-5">
+          {/* Filters */}
+          <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+            <input
+              type="search"
+              placeholder="Search name, SKU, or barcode"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="field"
+            />
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="field"
+            >
+              <option value="">All categories</option>
+              {categories.map((c) => (
+                <option key={c.category_id} value={c.category_id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={supplierFilter}
+              onChange={(e) => setSupplierFilter(e.target.value)}
+              className="field"
+            >
+              <option value="">All suppliers</option>
+              {suppliers.map((s) => (
+                <option key={s.supplier_id} value={s.supplier_id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={stockStatusFilter}
+              onChange={(e) => setStockStatusFilter(e.target.value)}
+              className="field"
+            >
+              <option value="">All stock statuses</option>
+              <option value="In Stock">In stock</option>
+              <option value="Low Stock">Low stock (paubos)</option>
+              <option value="Out of Stock">Out of stock</option>
+            </select>
+          </div>
 
-        {/* Table or Empty State */}
-        <div className="flex-1 overflow-hidden relative">
-          {loading && (
-            <div className="absolute inset-0 bg-gray-800/50 backdrop-blur-sm flex items-center justify-center z-20">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500"></div>
-            </div>
-          )}
-          {products.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-gray-500">
-              No products found.
-            </div>
-          ) : (
+          {/* Table or Empty State */}
+          <div className="relative flex-1 overflow-hidden">
+            {loading && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-surface/60 backdrop-blur-sm">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-peso"></div>
+              </div>
+            )}
+            {products.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
+                <p className="text-sm font-semibold text-muted">
+                  No products found
+                </p>
+                <p className="text-xs text-faint">
+                  Try another search, or add a product to start your stock list.
+                </p>
+              </div>
+            ) : (
             <InventoryTable
               products={products}
               mode="management"
@@ -265,7 +271,8 @@ const InventoryPage: React.FC = () => {
               onEdit={handleOpenModalForEdit}
               onDelete={handleDeleteConfirmation}
             />
-          )}
+            )}
+          </div>
         </div>
       </div>
 

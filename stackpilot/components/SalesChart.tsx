@@ -16,33 +16,37 @@ const SalesChart: React.FC<SalesChartProps> = ({ data }) => {
                 data={data}
                 margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
             >
-                <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-                <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis 
-                    stroke="#9CA3AF" 
-                    fontSize={12} 
-                    tickLine={false} 
-                    axisLine={false} 
+                <CartesianGrid strokeDasharray="3 3" stroke="#E3E1D6" />
+                <XAxis dataKey="date" stroke="#E3E1D6" fontSize={12} tickLine={false} axisLine={false} tick={{ fill: '#6B7268' }} />
+                <YAxis
+                    stroke="#E3E1D6"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: '#6B7268' }}
                     tickFormatter={(value) => `₱${Number(value).toLocaleString('en-US')}`}
                 />
                 <Tooltip
                     formatter={(value: number, name: string) => {
                         if (name === 'amount') {
-                            return [formatCurrency(value), 'Revenue'];
+                            return [formatCurrency(value), 'Benta'];
                         } else if (name === 'profit') {
-                            return [formatCurrency(value), 'Profit'];
+                            return [formatCurrency(value), 'Kita'];
                         }
                         return [value, name];
                     }}
                     contentStyle={{
-                        backgroundColor: '#1F2937', // gray-800
-                        borderColor: '#4B5563' // gray-600
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E3E1D6',
+                        borderRadius: '0.75rem',
+                        boxShadow: '0 12px 32px -12px rgba(14, 26, 22, 0.25)',
                     }}
-                    labelStyle={{ color: '#F9FAFB' }} // gray-50
+                    labelStyle={{ color: '#0E1A16', fontWeight: 600 }}
+                    itemStyle={{ color: '#16261F' }}
                 />
                 <Legend iconType="circle" />
-                <Line type="monotone" dataKey="amount" stroke="#38BDF8" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 8 }} />
-                 <Line type="monotone" dataKey="profit" stroke="#82ca9d" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 8 }} />
+                <Line type="monotone" dataKey="amount" stroke="#0B6E50" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 8 }} />
+                 <Line type="monotone" dataKey="profit" stroke="#1C5FD6" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 8 }} />
             </LineChart>
         </ResponsiveContainer>
     </div>

@@ -103,132 +103,137 @@ const OrderHistoryPage: React.FC = () => {
 
   if (loading && orders.length === 0) {
     return (
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
-        <p className="ml-3 text-sky-400">Loading order history...</p>
+      <main className="page">
+        <div className="page-inner flex min-h-[60vh] items-center justify-center gap-3">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-line border-t-peso"></div>
+          <p className="text-sm text-muted">Loading order history…</p>
+        </div>
       </main>
     );
   }
 
   if (error) {
     return (
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 flex items-center justify-center text-red-400">
-        <p>Error: {error}</p>
-        <button
-          onClick={fetchOrderHistory}
-          className="ml-4 px-4 py-2 bg-sky-600 text-white rounded-md"
-        >
-          Retry
-        </button>
+      <main className="page">
+        <div className="page-inner flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
+          <div>
+            <p className="font-display text-lg font-semibold text-ink">Hindi ma-load ang benta</p>
+            <p className="mt-1 text-sm text-danger">{error}</p>
+          </div>
+          <button onClick={fetchOrderHistory} className="btn btn-primary">
+            Subukan ulit
+          </button>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-white tracking-tight">
-          Order History
-        </h1>
-        <p className="text-gray-400">Review past transactions.</p>
-      </header>
+    <main className="page">
+      <div className="page-inner space-y-4 lg:space-y-5">
+        <header className="pl-12 lg:pl-0">
+          <p className="eyebrow">Benta</p>
+          <h1 className="page-title mt-1">Order history</h1>
+          <p className="mt-1 text-sm text-muted">Review past transactions and reprint resibo.</p>
+        </header>
 
-      <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
-        <div className="mb-6">
-          <input
-            type="text"
-            placeholder="Search by Order ID or Product Name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full max-w-md bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
-          />
-        </div>
+        <div className="card p-4 lg:p-5 animate-fade-in">
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Search by order ID or product name…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="field max-w-md"
+            />
+          </div>
 
-        <div className="overflow-x-auto max-h-[calc(100vh-280px)] relative">
-          {loading && (
-            <div className="absolute inset-0 bg-gray-800/50 backdrop-blur-sm flex items-center justify-center z-10">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500"></div>
-            </div>
-          )}
-          <table className="w-full text-sm text-left text-gray-400">
-            <thead className="text-xs text-gray-300 uppercase bg-gray-700/50 sticky top-0 backdrop-blur-sm">
-              <tr>
-                <th scope="col" className="px-6 py-3">
-                  Order ID
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  Date
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  Items
-                </th>
-                <th scope="col" className="px-6 py-3">
-                  Total
-                </th>
-                <th scope="col" className="px-6 py-3 text-center">
-                  Payment
-                </th>
-                <th scope="col" className="px-6 py-3 text-center">
-                  Receipt
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.length === 0 ? (
+          <div className="relative max-h-[calc(100vh-280px)] overflow-x-auto">
+            {loading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface/60 backdrop-blur-sm">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-peso"></div>
+              </div>
+            )}
+            <table className="data-table">
+              <thead className="sticky top-0">
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="px-6 py-4 text-center text-gray-500"
-                  >
-                    No orders found.
-                  </td>
+                  <th scope="col">Order ID</th>
+                  <th scope="col">Date</th>
+                  <th scope="col">Items</th>
+                  <th scope="col">Total</th>
+                  <th scope="col" className="text-center">Payment</th>
+                  <th scope="col" className="text-center">Resibo</th>
                 </tr>
-              ) : (
-                orders.map((order) => (
-                  <tr
-                    key={order.order_id}
-                    className="border-b border-gray-700 hover:bg-gray-700/50"
-                  >
-                    <td className="px-6 py-4 font-mono text-xs text-sky-400">
-                      {order.order_id}
-                    </td>
-                    <td className="px-6 py-4">
-                      {formatLocalDate(order.order_date)}
-                    </td>
-                    <td className="px-6 py-4">
-                      {order.items
-                        ?.map((i) => `${i.product} (x${i.qty})`)
-                        .join(", ") || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 font-semibold text-white">
-                      {formatCurrency(order.total)}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center space-x-2">
-                        {order.payment_method === "cash" ? (
-                          <CashIcon className="w-5 h-5" />
-                        ) : (
-                          <CreditCardIcon className="w-5 h-5" />
-                        )}
-                        <span className="capitalize">
-                          {order.payment_method || "N/A"}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => handleViewReceipt(order)}
-                        className="p-2 text-sky-400 rounded-full hover:bg-sky-400/10 transition-colors duration-200"
-                        aria-label="View receipt"
-                      >
-                        <DocumentDuplicateIcon className="w-5 h-5" />
-                      </button>
+              </thead>
+              <tbody>
+                {orders.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <p className="text-sm font-semibold text-muted">
+                        {searchTerm ? "Walang tugmang order" : "Wala pang benta"}
+                      </p>
+                      <p className="mt-1 text-xs text-faint">
+                        {searchTerm
+                          ? "Try a different order ID or product name."
+                          : "Recorded sales will show up here."}
+                      </p>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  orders.map((order) => {
+                    const method = (order.payment_method || "").toLowerCase();
+                    const pillClass =
+                      method === "cash"
+                        ? "pill pill-ok"
+                        : method === "gcash"
+                        ? "pill bg-gcash-tint text-gcash"
+                        : method === "utang"
+                        ? "pill pill-warn"
+                        : "pill pill-muted";
+                    return (
+                      <tr key={order.order_id}>
+                        <td className="money text-xs text-muted">
+                          #{order.order_id}
+                        </td>
+                        <td className="text-muted">
+                          {formatLocalDate(order.order_date)}
+                        </td>
+                        <td className="text-ink">
+                          {order.items
+                            ?.map((i) => `${i.product} (x${i.qty})`)
+                            .join(", ") || "—"}
+                        </td>
+                        <td className="money font-bold text-ink">
+                          {formatCurrency(order.total)}
+                        </td>
+                        <td className="text-center">
+                          <span className={pillClass}>
+                            {method === "cash" ? (
+                              <CashIcon className="h-4 w-4" />
+                            ) : (
+                              <CreditCardIcon className="h-4 w-4" />
+                            )}
+                            <span className="capitalize">
+                              {order.payment_method || "—"}
+                            </span>
+                          </span>
+                        </td>
+                        <td className="text-center">
+                          <button
+                            onClick={() => handleViewReceipt(order)}
+                            className="btn btn-ghost mx-auto min-h-11 min-w-11 px-0"
+                            aria-label="View resibo"
+                          >
+                            <DocumentDuplicateIcon className="h-5 w-5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

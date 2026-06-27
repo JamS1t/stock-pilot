@@ -10,18 +10,18 @@ interface DashboardCardProps {
 }
 
 const DashboardCard: React.FC<DashboardCardProps> = ({ icon: Icon, title, value, change, changeType }) => {
-    const changeColor = changeType === 'increase' ? 'text-green-400' : 'text-red-400';
-    
+    const changeColor = changeType === 'increase' ? 'text-peso' : 'text-danger';
+
     return (
-        <div className="bg-gray-800 p-6 rounded-xl shadow-lg flex items-start justify-between">
-            <div>
-                <p className="text-sm font-medium text-gray-400">{title}</p>
-                <p className="text-3xl font-bold text-white mt-2">{value}</p>
-                <p className={`text-xs mt-2 ${changeColor}`}>{change}</p>
+        <div className="card flex items-start justify-between p-4 lg:p-5">
+            <div className="min-w-0">
+                <p className="stat-label">{title}</p>
+                <p className="money mt-1 text-2xl font-bold tracking-tight text-peso lg:text-3xl">{value}</p>
+                <p className={`mt-2 text-xs ${changeColor}`}>{change}</p>
             </div>
-            <div className="bg-gray-700/50 p-3 rounded-lg">
-                <Icon className="w-6 h-6 text-sky-400" />
-            </div>
+            <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-peso-tint text-peso">
+                <Icon className="h-5 w-5" />
+            </span>
         </div>
     );
 };
