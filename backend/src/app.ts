@@ -10,6 +10,9 @@ import supplierRoutes from "./routes/supplier.routes";
 import productRoutes from "./routes/product.routes";
 import orderRoutes from "./routes/order.routes";
 import reportRoutes from "./routes/report.routes";
+import customerRoutes from "./routes/customer.routes";
+import utangRoutes from "./routes/utang.routes";
+import paymentRoutes from "./routes/payment.routes";
 import { requireAuth } from "./middlewares/auth.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
 
@@ -29,6 +32,9 @@ app.use("/api/suppliers", supplierRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/customers", customerRoutes);
+app.use("/api/utang", utangRoutes);
+app.use("/api/payments", paymentRoutes);
 
 app.use(errorHandler);
 
