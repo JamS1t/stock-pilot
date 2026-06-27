@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Sidebar from "./components/Sidebar";
+import CounterDashboard from "./pages/CounterDashboard";
 import PosPage from "./pages/PosPage";
 import InventoryPage from "./pages/InventoryPage";
 import ReportsPage from "./pages/ReportsPage";
@@ -15,8 +16,8 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // Main App component wrapped with AuthProvider
 const AppContent: React.FC = () => {
-  const { isAuthenticated, logout } = useAuth(); // Use auth context
-  const [activePage, setActivePage] = useState("pos");
+  const { isAuthenticated } = useAuth(); // Use auth context
+  const [activePage, setActivePage] = useState("counter");
 
   // Data state is now managed within individual page components or context
   // const [products, setProducts] = useState<Product[]>(PRODUCTS);
@@ -30,7 +31,9 @@ const AppContent: React.FC = () => {
 
   const renderActivePage = () => {
     switch (activePage) {
-      case "pos":
+      case "counter":
+        return <CounterDashboard setActivePage={setActivePage} />;
+      case "legacy_pos":
         return <PosPage />; // No props needed
       case "inventory":
         return <InventoryPage />; // No props needed
@@ -45,7 +48,7 @@ const AppContent: React.FC = () => {
       case "settings":
         return <AdminSettingsPage />;
       default:
-        return <PosPage />; // No props needed
+        return <CounterDashboard setActivePage={setActivePage} />;
     }
   };
 

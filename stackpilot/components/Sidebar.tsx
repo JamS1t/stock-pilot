@@ -130,7 +130,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage }) => {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-2">
-          <NavLink icon={ShoppingCartIcon} label="POS" pageName="pos" activePage={activePage} onClick={() => { setActivePage('pos'); setIsMobileOpen(false); }} isCollapsed={isCollapsed} />
+          <NavLink icon={ShoppingCartIcon} label="Counter" pageName="counter" activePage={activePage} onClick={() => { setActivePage('counter'); setIsMobileOpen(false); }} isCollapsed={isCollapsed} />
           <NavLink icon={PackageIcon} label="Inventory" pageName="inventory" activePage={activePage} onClick={() => { setActivePage('inventory'); setIsMobileOpen(false); }} isCollapsed={isCollapsed} />
           <NavLink icon={ChartBarIcon} label="Reports" pageName="reports" activePage={activePage} onClick={() => { setActivePage('reports'); setIsMobileOpen(false); }} isCollapsed={isCollapsed} />
           <NavLink icon={TagIcon} label="Categories" pageName="categories" activePage={activePage} onClick={() => { setActivePage('categories'); setIsMobileOpen(false); }} isCollapsed={isCollapsed} />
