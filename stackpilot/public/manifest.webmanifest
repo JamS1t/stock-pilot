@@ -1,0 +1,25 @@
+{
+  "name": "StockPilot Counter AI",
+  "short_name": "StockPilot",
+  "description": "Tablet-first counter system for sales, stock, cash, and utang.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#047857",
+  "orientation": "landscape-primary",
+  "icons": [
+    {
+      "src": "/stockpilot-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/stockpilot-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

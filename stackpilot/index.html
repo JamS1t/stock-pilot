@@ -5,11 +5,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/favicon.ico" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/stockpilot-logo.png" />
+    <meta name="theme-color" content="#047857" />
     <title>StockPilot</title>
     <!-- Google Identity Services SDK -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/recharts/umd/Recharts.min.js"></script>
     <style>
         /* Custom scrollbar for a more modern look */
         ::-webkit-scrollbar {
@@ -27,17 +29,6 @@
             background: #6b7280; /* bg-gray-500 */
         }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.1.1/",
-    "react": "https://aistudiocdn.com/react@^19.1.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
-    "recharts": "https://aistudiocdn.com/recharts@^3.2.1"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-gray-900 text-gray-200 font-sans antialiased">
     <div id="root"></div>
