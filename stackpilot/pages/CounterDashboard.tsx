@@ -22,6 +22,7 @@ import {
   CashSession,
   closeCashSession,
   createCustomer,
+  createStockMovement,
   createUtang,
   Customer,
   CustomerBalance,
@@ -34,6 +35,7 @@ import {
   processOrderPOS,
   Product,
   recordPayment,
+  StockMovementReason,
   WhoOwesCustomer,
 } from "../utils/api";
 
@@ -87,6 +89,11 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [openingCash, setOpeningCash] = useState("");
   const [actualCash, setActualCash] = useState("");
+  const [adjustmentProductId, setAdjustmentProductId] = useState("");
+  const [adjustmentQty, setAdjustmentQty] = useState("");
+  const [adjustmentReason, setAdjustmentReason] =
+    useState<StockMovementReason>("correction");
+  const [adjustmentNote, setAdjustmentNote] = useState("");
   const [queueSummary, setQueueSummary] = useState<SyncQueueSummary>({
     queued: 0,
     syncing: 0,
@@ -516,6 +523,42 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     }
   };
 
+  const handleStockAdjustment = async () => {
+    const quantityDelta = Number(adjustmentQty);
+    if (
+      !adjustmentProductId ||
+      !Number.isFinite(quantityDelta) ||
+      quantityDelta === 0 ||
+      isSubmitting
+    ) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setActionError(null);
+    setActionStatus(null);
+
+    try {
+      await createStockMovement({
+        product_id: Number(adjustmentProductId),
+        quantity_delta: quantityDelta,
+        reason: adjustmentReason,
+        source_type: "counter_adjustment",
+        note: adjustmentNote || null,
+      });
+      setAdjustmentProductId("");
+      setAdjustmentQty("");
+      setAdjustmentReason("correction");
+      setAdjustmentNote("");
+      setActionStatus("Stock movement recorded.");
+      await fetchProducts();
+    } catch (err: any) {
+      setActionError(err.message || "Unable to record stock movement.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <main className="flex-1 overflow-auto bg-neutral-950 text-white">
       <div className="min-h-full p-4 lg:p-5">
@@ -912,6 +955,74 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
                   </button>
                 </div>
               )}
+            </div>
+
+            <div className="mt-4 rounded-lg border border-neutral-800 bg-neutral-950 p-3">
+              <p className="mb-3 text-sm font-semibold text-white">
+                Stock Adjustment
+              </p>
+              <div className="space-y-2">
+                <select
+                  value={adjustmentProductId}
+                  onChange={(event) =>
+                    setAdjustmentProductId(event.target.value)
+                  }
+                  className="min-h-11 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                >
+                  <option value="">Select product</option>
+                  {products.map((product) => (
+                    <option
+                      key={product.product_id}
+                      value={product.product_id}
+                    >
+                      {product.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    value={adjustmentQty}
+                    onChange={(event) => setAdjustmentQty(event.target.value)}
+                    placeholder="+/- quantity"
+                    inputMode="decimal"
+                    className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                  />
+                  <select
+                    value={adjustmentReason}
+                    onChange={(event) =>
+                      setAdjustmentReason(
+                        event.target.value as StockMovementReason
+                      )
+                    }
+                    className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                  >
+                    <option value="correction">Correction</option>
+                    <option value="stock_in">Stock in</option>
+                    <option value="return">Return</option>
+                    <option value="damage">Damage</option>
+                    <option value="expired">Expired</option>
+                    <option value="owner_use">Owner use</option>
+                  </select>
+                </div>
+                <input
+                  value={adjustmentNote}
+                  onChange={(event) => setAdjustmentNote(event.target.value)}
+                  placeholder="Reason note"
+                  className="min-h-11 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                />
+                <button
+                  onClick={handleStockAdjustment}
+                  disabled={
+                    !adjustmentProductId ||
+                    !Number.isFinite(Number(adjustmentQty)) ||
+                    Number(adjustmentQty) === 0 ||
+                    isSubmitting
+                  }
+                  className="min-h-11 w-full rounded-lg border border-neutral-700 px-3 text-sm font-bold text-neutral-200 hover:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Record Movement
+                </button>
+              </div>
             </div>
 
             <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-950/30 p-3">

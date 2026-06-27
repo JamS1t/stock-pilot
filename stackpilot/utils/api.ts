@@ -680,3 +680,62 @@ export const closeCashSession = async (
 ): Promise<{ message: string; data: MutationResult }> => {
   return fetchApi(`/cash-sessions/${id}/close`, "POST", payload);
 };
+
+// --- Stock Movement API Calls ---
+export type StockMovementReason =
+  | "sale"
+  | "stock_in"
+  | "return"
+  | "damage"
+  | "expired"
+  | "owner_use"
+  | "correction";
+
+export interface StockMovement {
+  movement_id: number;
+  product_id: number;
+  quantity_delta: number;
+  reason: StockMovementReason;
+  source_type: string | null;
+  source_id: number | null;
+  note: string | null;
+  created_by: number | null;
+  created_at: string;
+  client_mutation_id: string | null;
+}
+
+export interface CreateStockMovementInput {
+  product_id: number;
+  quantity_delta: number;
+  reason: StockMovementReason;
+  source_type?: string | null;
+  source_id?: number | null;
+  note?: string | null;
+  client_mutation_id?: string;
+}
+
+export interface CreatedStockMovementResult {
+  movement_id: number;
+}
+
+export const createStockMovement = async (
+  movement: CreateStockMovementInput
+): Promise<{ message: string; data: CreatedStockMovementResult }> => {
+  return fetchApi("/stock-movements", "POST", movement);
+};
+
+export const listStockMovements = async (filters?: {
+  product_id?: number;
+  from?: string;
+  to?: string;
+}): Promise<{ message: string; data: StockMovement[] }> => {
+  const query = new URLSearchParams();
+  if (filters?.product_id)
+    query.append("product_id", filters.product_id.toString());
+  if (filters?.from) query.append("from", filters.from);
+  if (filters?.to) query.append("to", filters.to);
+  const endpoint = `/stock-movements${
+    query.toString() ? `?${query.toString()}` : ""
+  }`;
+  return fetchApi(endpoint, "GET");
+};
