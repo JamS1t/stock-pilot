@@ -634,3 +634,49 @@ export const voidPayment = async (
 ): Promise<{ message: string; data: MutationResult }> => {
   return fetchApi(`/payments/${id}/void`, "POST");
 };
+
+// --- Cash Session API Calls ---
+export interface CashSession {
+  cash_session_id: number;
+  opened_by: number | null;
+  closed_by?: number | null;
+  opened_at: string;
+  closed_at?: string | null;
+  opening_cash: number;
+  expected_cash?: number | null;
+  actual_cash?: number | null;
+  difference?: number | null;
+  status: "open" | "closed";
+}
+
+export interface OpenCashSessionResult {
+  cash_session_id: number;
+}
+
+export const getOpenCashSession = async (): Promise<{
+  message: string;
+  data: CashSession | null;
+}> => {
+  return fetchApi("/cash-sessions/open", "GET");
+};
+
+export const listCashSessions = async (status?: "open" | "closed"): Promise<{
+  message: string;
+  data: CashSession[];
+}> => {
+  const endpoint = status ? `/cash-sessions?status=${status}` : "/cash-sessions";
+  return fetchApi(endpoint, "GET");
+};
+
+export const openCashSession = async (
+  opening_cash: number
+): Promise<{ message: string; data: OpenCashSessionResult }> => {
+  return fetchApi("/cash-sessions/open", "POST", { opening_cash });
+};
+
+export const closeCashSession = async (
+  id: number,
+  payload: { expected_cash: number; actual_cash: number }
+): Promise<{ message: string; data: MutationResult }> => {
+  return fetchApi(`/cash-sessions/${id}/close`, "POST", payload);
+};

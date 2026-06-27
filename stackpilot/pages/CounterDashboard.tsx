@@ -19,14 +19,18 @@ import {
 } from "../offline/syncQueue";
 import { useDebounce } from "../utils/hooks";
 import {
+  CashSession,
+  closeCashSession,
   createCustomer,
   createUtang,
   Customer,
   CustomerBalance,
   getCustomerBalance,
   getCustomers,
+  getOpenCashSession,
   getProducts,
   getWhoOwes,
+  openCashSession,
   processOrderPOS,
   Product,
   recordPayment,
@@ -80,6 +84,9 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
   const [orderForReceipt, setOrderForReceipt] = useState<number | null>(null);
   const [todaySales, setTodaySales] = useState(0);
   const [expectedCash, setExpectedCash] = useState(0);
+  const [cashSession, setCashSession] = useState<CashSession | null>(null);
+  const [openingCash, setOpeningCash] = useState("");
+  const [actualCash, setActualCash] = useState("");
   const [queueSummary, setQueueSummary] = useState<SyncQueueSummary>({
     queued: 0,
     syncing: 0,
@@ -127,6 +134,22 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
       setActionError(err.message || "Unable to load ledger data.");
     });
   }, [refreshLedger]);
+
+  const refreshCashSession = useCallback(async () => {
+    const response = await getOpenCashSession();
+    setCashSession(response.data);
+    if (response.data?.opening_cash) {
+      setExpectedCash((current) =>
+        current === 0 ? Number(response.data?.opening_cash ?? 0) : current
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshCashSession().catch((err: any) => {
+      setActionError(err.message || "Unable to load cash session.");
+    });
+  }, [refreshCashSession]);
 
   const refreshQueueSummary = useCallback(async () => {
     const summary = await getSyncQueueSummary();
@@ -425,6 +448,69 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
       await reloadCounterData();
     } catch (err: any) {
       setActionError(err.message || "Unable to retry sync queue.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenCashSession = async () => {
+    const openingAmount = Number(openingCash || 0);
+    if (!Number.isFinite(openingAmount) || openingAmount < 0 || isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setActionError(null);
+    setActionStatus(null);
+
+    try {
+      const response = await openCashSession(openingAmount);
+      setCashSession({
+        cash_session_id: response.data.cash_session_id,
+        opened_by: null,
+        opened_at: new Date().toISOString(),
+        opening_cash: openingAmount,
+        status: "open",
+      });
+      setExpectedCash(openingAmount);
+      setOpeningCash("");
+      setActionStatus("Cash session opened.");
+    } catch (err: any) {
+      setActionError(err.message || "Unable to open cash session.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCloseCashSession = async () => {
+    const actualAmount = Number(actualCash);
+    if (
+      !cashSession ||
+      !Number.isFinite(actualAmount) ||
+      actualAmount < 0 ||
+      isSubmitting
+    ) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setActionError(null);
+    setActionStatus(null);
+
+    try {
+      await closeCashSession(cashSession.cash_session_id, {
+        expected_cash: expectedCash,
+        actual_cash: actualAmount,
+      });
+      setCashSession(null);
+      setActualCash("");
+      setActionStatus(
+        `Cash session closed. Difference: ${formatCurrency(
+          actualAmount - expectedCash
+        )}`
+      );
+    } catch (err: any) {
+      setActionError(err.message || "Unable to close cash session.");
     } finally {
       setIsSubmitting(false);
     }
@@ -758,6 +844,74 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
                   <p className="mt-1 text-xs text-neutral-500">{detail}</p>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-4 rounded-lg border border-neutral-800 bg-neutral-950 p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-white">
+                    Cash Session
+                  </p>
+                  <p className="text-xs text-neutral-500">
+                    {cashSession
+                      ? `Open #${cashSession.cash_session_id}`
+                      : "No open session"}
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-2 py-1 text-xs font-bold ${
+                    cashSession
+                      ? "bg-emerald-500/20 text-emerald-200"
+                      : "bg-neutral-800 text-neutral-400"
+                  }`}
+                >
+                  {cashSession ? "Open" : "Closed"}
+                </span>
+              </div>
+
+              {cashSession ? (
+                <div className="space-y-2">
+                  <input
+                    value={actualCash}
+                    onChange={(event) => setActualCash(event.target.value)}
+                    placeholder="Actual cash count"
+                    inputMode="decimal"
+                    className="min-h-11 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                  />
+                  <button
+                    onClick={handleCloseCashSession}
+                    disabled={
+                      !Number.isFinite(Number(actualCash)) ||
+                      Number(actualCash) < 0 ||
+                      isSubmitting
+                    }
+                    className="min-h-11 w-full rounded-lg bg-emerald-600 px-3 text-sm font-bold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+                  >
+                    Close Session
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-[1fr_auto] gap-2">
+                  <input
+                    value={openingCash}
+                    onChange={(event) => setOpeningCash(event.target.value)}
+                    placeholder="Opening cash"
+                    inputMode="decimal"
+                    className="min-h-11 rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-white outline-none focus:border-emerald-400"
+                  />
+                  <button
+                    onClick={handleOpenCashSession}
+                    disabled={
+                      !Number.isFinite(Number(openingCash || 0)) ||
+                      Number(openingCash || 0) < 0 ||
+                      isSubmitting
+                    }
+                    className="min-h-11 rounded-lg bg-neutral-700 px-3 text-sm font-bold text-white hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Open
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-950/30 p-3">
