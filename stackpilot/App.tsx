@@ -1,18 +1,25 @@
-import React, { useState } from "react";
+import React, { Suspense, lazy, useState } from "react";
 import Sidebar from "./components/Sidebar";
 import CounterDashboard from "./pages/CounterDashboard";
-import PosPage from "./pages/PosPage";
-import InventoryPage from "./pages/InventoryPage";
-import ReportsPage from "./pages/ReportsPage";
-import CategoriesPage from "./pages/CategoriesPage";
-import SuppliersPage from "./pages/SuppliersPage";
-import OrderHistoryPage from "./pages/OrderHistoryPage";
-import AdminSettingsPage from "./pages/AdminSettingsPage";
 import LoginPage from "./pages/LoginPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 // Remove dummy data imports and types that are now fetched within pages
 // import { Product, Category, Supplier, Order, OrderItem } from "./types";
 // import { PRODUCTS, CATEGORIES, SUPPLIERS, ORDERS } from "./constants";
+
+const PosPage = lazy(() => import("./pages/PosPage"));
+const InventoryPage = lazy(() => import("./pages/InventoryPage"));
+const ReportsPage = lazy(() => import("./pages/ReportsPage"));
+const CategoriesPage = lazy(() => import("./pages/CategoriesPage"));
+const SuppliersPage = lazy(() => import("./pages/SuppliersPage"));
+const OrderHistoryPage = lazy(() => import("./pages/OrderHistoryPage"));
+const AdminSettingsPage = lazy(() => import("./pages/AdminSettingsPage"));
+
+const PageFallback: React.FC = () => (
+  <main className="flex flex-1 items-center justify-center bg-gray-900 text-sky-400">
+    <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-sky-500" />
+  </main>
+);
 
 // Main App component wrapped with AuthProvider
 const AppContent: React.FC = () => {
@@ -63,7 +70,7 @@ const AppContent: React.FC = () => {
         setActivePage={setActivePage}
         // onLogout prop is no longer needed
       />
-      {renderActivePage()}
+      <Suspense fallback={<PageFallback />}>{renderActivePage()}</Suspense>
     </div>
   );
 };
