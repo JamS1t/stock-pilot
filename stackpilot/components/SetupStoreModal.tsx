@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import DialogFrame from "./DialogFrame";
 
 interface SetupStoreModalProps {
   userId: number;
@@ -45,8 +46,7 @@ const SetupStoreModal: React.FC<SetupStoreModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 font-sans backdrop-blur-sm">
-      <div className="card w-full max-w-md animate-fade-in p-6 shadow-pop">
+    <DialogFrame onClose={onClose} closeOnBackdrop={false}>
         <div className="text-center">
           <p className="eyebrow">Welcome sa StockPilot</p>
           <h2 className="mt-1 font-display text-2xl font-bold text-ink">
@@ -143,8 +143,7 @@ const SetupStoreModal: React.FC<SetupStoreModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </DialogFrame>
   );
 };
 

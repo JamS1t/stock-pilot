@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Category, createCategory, updateCategory } from '../utils/api';
 import ConfirmationModal from './ConfirmationModal'; // Add ConfirmationModal import
+import DialogFrame from './DialogFrame';
 
 interface CategoryFormModalProps {
     category: Category | null;
@@ -55,8 +56,8 @@ const CategoryFormModal: React.FC<CategoryFormModalProps> = ({ category, onSave,
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4" onClick={onClose}>
-            <div className="card w-full max-w-md p-6 shadow-pop animate-fade-in" onClick={e => e.stopPropagation()}>
+        <>
+            <DialogFrame onClose={onClose}>
                 <h2 className="font-display text-xl font-bold text-ink mb-5">{category ? 'Edit category' : 'Add new category'}</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
@@ -87,7 +88,7 @@ const CategoryFormModal: React.FC<CategoryFormModalProps> = ({ category, onSave,
                         </button>
                     </div>
                 </form>
-            </div>
+            </DialogFrame>
             <ConfirmationModal
                 isOpen={isConfirmSaveOpen}
                 title={`Confirm ${category ? 'Update' : 'Creation'}`}
@@ -96,7 +97,7 @@ const CategoryFormModal: React.FC<CategoryFormModalProps> = ({ category, onSave,
                 onConfirm={handleConfirmSave}
                 onCancel={() => setIsConfirmSaveOpen(false)}
             />
-        </div>
+        </>
     );
 };
 

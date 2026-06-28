@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CashIcon, CreditCardIcon } from './icons';
 import { useFormatters } from '../format';
+import DialogFrame from './DialogFrame';
 
 interface PaymentModalProps {
     total: number;
@@ -18,14 +19,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ total, onClose, onConfirmPa
     };
 
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 backdrop-blur-sm"
-            onClick={onClose}
-        >
-            <div
-                className="card w-full max-w-md p-6 shadow-pop animate-fade-in"
-                onClick={e => e.stopPropagation()}
-            >
+        <DialogFrame onClose={onClose}>
                 <p className="eyebrow text-center">Bayad</p>
                 <h2 className="mt-1 text-center font-display text-2xl font-bold text-ink">
                     Confirm payment
@@ -86,8 +80,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ total, onClose, onConfirmPa
                         Cancel
                     </button>
                 </div>
-            </div>
-        </div>
+        </DialogFrame>
     );
 };
 

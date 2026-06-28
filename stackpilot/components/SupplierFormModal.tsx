@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Supplier, createSupplier, updateSupplier } from '../utils/api'; // Import Supplier interface and API functions
 import ConfirmationModal from './ConfirmationModal'; // Import ConfirmationModal
+import DialogFrame from './DialogFrame';
 
 interface SupplierFormModalProps {
     supplier: Supplier | null;
@@ -76,11 +77,8 @@ const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, onSave,
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4" onClick={onClose}>
-            <div
-                className="card w-full max-w-lg p-6 shadow-pop animate-fade-in"
-                onClick={e => e.stopPropagation()}
-            >
+        <>
+            <DialogFrame onClose={onClose} maxWidth="max-w-lg">
                 <h2 className="font-display text-xl font-bold text-ink mb-6">
                     {supplier ? 'Edit supplier' : 'Add supplier'}
                 </h2>
@@ -192,7 +190,7 @@ const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, onSave,
                         </button>
                     </div>
                 </form>
-            </div>
+            </DialogFrame>
 
             <ConfirmationModal
                 isOpen={isConfirmSaveOpen}
@@ -202,7 +200,7 @@ const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, onSave,
                 onConfirm={handleConfirmSave}
                 onCancel={() => setIsConfirmSaveOpen(false)}
             />
-        </div>
+        </>
     );
 };
 

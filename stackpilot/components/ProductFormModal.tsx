@@ -7,6 +7,7 @@ import {
   updateProduct,
 } from "../utils/api";
 import ConfirmationModal from "./ConfirmationModal";
+import DialogFrame from "./DialogFrame";
 
 interface ProductFormModalProps {
   product: Product | null;
@@ -152,14 +153,8 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4"
-      onClick={onClose}
-    >
-      <div
-        className="card w-full max-w-2xl p-6 shadow-pop animate-fade-in"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <>
+      <DialogFrame onClose={onClose} maxWidth="max-w-2xl">
         <h2 className="font-display text-xl font-bold text-ink mb-5">
           {product ? "Edit product" : "Add new product"}
         </h2>
@@ -349,7 +344,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
+      </DialogFrame>
 
       {/* ✅ Confirmation Modal inside Form */}
       <ConfirmationModal
@@ -362,7 +357,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
         onConfirm={handleConfirmSave}
         onCancel={() => setIsConfirmSaveOpen(false)}
       />
-    </div>
+    </>
   );
 };
 
