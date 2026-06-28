@@ -114,6 +114,7 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     syncing: 0,
     synced: 0,
     failed: 0,
+    conflict: 0,
     total: 0,
   });
   const [failedSyncItems, setFailedSyncItems] = useState<SyncQueueItem[]>([]);
@@ -278,7 +279,8 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     [whoOwes]
   );
 
-  const pendingSync = queueSummary.queued + queueSummary.failed;
+  const pendingSync =
+    queueSummary.queued + queueSummary.failed + queueSummary.conflict;
   const firstSearchResult = products[0];
 
   const addToCart = (product: Product) => {
@@ -453,10 +455,27 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     setActionStatus(null);
 
     try {
-      const response = await createCustomer({
+      const payload = {
         name: newCustomerName.trim(),
         phone: newCustomerPhone.trim() || null,
-      });
+      };
+
+      if (!isOnline) {
+        await queueOfflineMutation({
+          entity_type: "customer",
+          operation_type: "create",
+          endpoint: "/customers",
+          method: "POST",
+          payload,
+        });
+        setNewCustomerName("");
+        setNewCustomerPhone("");
+        setActionStatus("Customer queued offline.");
+        await refreshQueueSummary();
+        return true;
+      }
+
+      const response = await createCustomer(payload);
       await refreshLedger();
       setChargeCustomerId(String(response.data.customer_id));
       setNewCustomerName("");
@@ -753,7 +772,11 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
   const addCustomerFromCharge = async () => {
     setChargeStatus({ loading: "Adding suki..." });
     const ok = await handleCreateCustomer();
-    setChargeStatus(ok ? { success: "Customer added." } : { error: "Unable to add customer." });
+    setChargeStatus(
+      ok
+        ? { success: isOnline ? "Customer added." : "Customer queued offline." }
+        : { error: "Unable to add customer." }
+    );
   };
 
   const recordPaymentFromDrawer = async () => {

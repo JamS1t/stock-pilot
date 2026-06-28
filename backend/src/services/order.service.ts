@@ -46,6 +46,34 @@ export async function getOrderHistory(
 }
 
 export type OrderVoidAction = "cancel" | "refund";
+export type OrderStatus = "paid" | "pending" | "cancelled" | "refunded";
+
+export function validateOrderVoidTransition(
+  currentStatus: OrderStatus,
+  action: OrderVoidAction
+) {
+  if (["cancelled", "refunded"].includes(currentStatus)) {
+    throw new ApiError(
+      409,
+      "ORDER_ALREADY_VOIDED",
+      "Order has already been cancelled or refunded."
+    );
+  }
+  if (action === "cancel" && currentStatus !== "pending") {
+    throw new ApiError(
+      400,
+      "ORDER_NOT_CANCELLABLE",
+      "Only pending orders can be cancelled."
+    );
+  }
+  if (action === "refund" && currentStatus !== "paid") {
+    throw new ApiError(
+      400,
+      "ORDER_NOT_REFUNDABLE",
+      "Only paid orders can be refunded."
+    );
+  }
+}
 
 export async function voidOrder(
   storeId: number,
@@ -69,27 +97,7 @@ export async function voidOrder(
     if (!order) {
       throw new ApiError(404, "ORDER_NOT_FOUND", "Order not found.");
     }
-    if (["cancelled", "refunded"].includes(order.status)) {
-      throw new ApiError(
-        409,
-        "ORDER_ALREADY_VOIDED",
-        "Order has already been cancelled or refunded."
-      );
-    }
-    if (action === "cancel" && order.status !== "pending") {
-      throw new ApiError(
-        400,
-        "ORDER_NOT_CANCELLABLE",
-        "Only pending orders can be cancelled."
-      );
-    }
-    if (action === "refund" && order.status !== "paid") {
-      throw new ApiError(
-        400,
-        "ORDER_NOT_REFUNDABLE",
-        "Only paid orders can be refunded."
-      );
-    }
+    validateOrderVoidTransition(order.status, action);
 
     const [items] = await connection.query<any[]>(
       `SELECT product_id, quantity, name

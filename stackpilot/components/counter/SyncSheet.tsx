@@ -25,18 +25,24 @@ const SyncSheet: React.FC<SyncSheetProps> = ({
   failedItems,
   onRetry,
   onDiscard,
-}) => (
-  <Sheet
-    isOpen={isOpen}
-    onClose={onClose}
-    eyebrow="Sync"
-    title={isOnline ? "Online" : "Offline - saving locally"}
-  >
+}) => {
+  const hasRetryableConflict = failedItems.some(
+    (item) => item.status === "conflict" && item.conflict?.retryable
+  );
+
+  return (
+    <Sheet
+      isOpen={isOpen}
+      onClose={onClose}
+      eyebrow="Sync"
+      title={isOnline ? "Online" : "Offline - saving locally"}
+    >
     <SheetStatus {...status} className="mb-3" />
-    <div className="grid grid-cols-3 gap-2 text-center">
+    <div className="grid grid-cols-4 gap-2 text-center">
       {([
         ["Queued", queueSummary.queued],
         ["Failed", queueSummary.failed],
+        ["Conflicts", queueSummary.conflict],
         ["Synced", queueSummary.synced],
       ] as const).map(([label, value]) => (
         <div key={label} className="card-sunken py-2.5">
@@ -48,24 +54,34 @@ const SyncSheet: React.FC<SyncSheetProps> = ({
     <button
       type="button"
       onClick={onRetry}
-      disabled={isSubmitting || (!queueSummary.queued && !queueSummary.failed) || !isOnline}
+      disabled={
+        isSubmitting ||
+        (!queueSummary.queued && !queueSummary.failed && !hasRetryableConflict) ||
+        !isOnline
+      }
       className="btn btn-ghost mt-3 w-full"
     >
       {isSubmitting ? "Retrying sync..." : "Retry sync"}
     </button>
     {failedItems.length > 0 && (
       <div className="mt-4 space-y-2">
-        <h3 className="text-sm font-semibold text-ink">Failed sync items</h3>
+        <h3 className="text-sm font-semibold text-ink">Sync items needing attention</h3>
         {failedItems.map((item) => (
           <div key={item.local_id} className="rounded-xl border border-danger/20 bg-danger-tint p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-danger">
+                  {item.status === "conflict" ? "Conflict" : "Failed"} -{" "}
                   {item.entity_type} {item.operation_type}
                 </p>
                 <p className="mt-1 text-xs text-danger">
-                  {item.last_error || "Sync failed."}
+                  {item.conflict?.message || item.last_error || "Sync failed."}
                 </p>
+                {item.conflict && (
+                  <p className="mt-1 text-[0.65rem] text-muted">
+                    Resolution: {item.conflict.resolution.replace(/_/g, " ")}
+                  </p>
+                )}
                 <p className="mt-1 text-[0.65rem] text-muted">
                   Attempts: {item.attempts}
                 </p>
@@ -83,7 +99,8 @@ const SyncSheet: React.FC<SyncSheetProps> = ({
         ))}
       </div>
     )}
-  </Sheet>
-);
+    </Sheet>
+  );
+};
 
 export default SyncSheet;

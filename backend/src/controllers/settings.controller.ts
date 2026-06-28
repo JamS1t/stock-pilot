@@ -52,6 +52,29 @@ function parseId(value: unknown, code: string, message: string) {
   return id;
 }
 
+export function parseStoreSettingsBody(body: Record<string, unknown>) {
+  return {
+    name: parseRequiredString(body.name, "Store name"),
+    timezone: parseRequiredString(body.timezone, "Timezone"),
+    currency: parseRequiredString(body.currency, "Currency"),
+    receipt_name: cleanOptionalString(body.receipt_name),
+    receipt_address: cleanOptionalString(body.receipt_address),
+    receipt_phone: cleanOptionalString(body.receipt_phone),
+    receipt_footer: cleanOptionalString(body.receipt_footer),
+    tax_enabled: parseBoolean(body.tax_enabled ?? false, "Tax enabled"),
+    tax_rate: parseTaxRate(body.tax_rate),
+    tax_label: parseRequiredString(body.tax_label || "Tax", "Tax label"),
+    require_cash_session: parseBoolean(
+      body.require_cash_session ?? false,
+      "Require cash session"
+    ),
+    allow_negative_stock: parseBoolean(
+      body.allow_negative_stock ?? false,
+      "Allow negative stock"
+    ),
+  };
+}
+
 export async function getStoreSettingsHandler(req: Request, res: Response) {
   try {
     const { store_id } = req.user!;
@@ -70,26 +93,7 @@ export async function updateStoreSettingsHandler(req: Request, res: Response) {
     const { store_id, user_id } = req.user!;
     const settings = await updateStoreSettings(
       store_id,
-      {
-        name: parseRequiredString(req.body.name, "Store name"),
-        timezone: parseRequiredString(req.body.timezone, "Timezone"),
-        currency: parseRequiredString(req.body.currency, "Currency"),
-        receipt_name: cleanOptionalString(req.body.receipt_name),
-        receipt_address: cleanOptionalString(req.body.receipt_address),
-        receipt_phone: cleanOptionalString(req.body.receipt_phone),
-        receipt_footer: cleanOptionalString(req.body.receipt_footer),
-        tax_enabled: parseBoolean(req.body.tax_enabled ?? false, "Tax enabled"),
-        tax_rate: parseTaxRate(req.body.tax_rate),
-        tax_label: parseRequiredString(req.body.tax_label || "Tax", "Tax label"),
-        require_cash_session: parseBoolean(
-          req.body.require_cash_session ?? false,
-          "Require cash session"
-        ),
-        allow_negative_stock: parseBoolean(
-          req.body.allow_negative_stock ?? false,
-          "Allow negative stock"
-        ),
-      },
+      parseStoreSettingsBody(req.body),
       {
         storeId: store_id,
         userId: user_id,

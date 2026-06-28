@@ -496,6 +496,65 @@ export interface SalesReportResponse {
   chart: SalesChartPoint[];
 }
 
+export interface ReportProductPerformance {
+  product_id: number;
+  product_name: string;
+  category_id: number | null;
+  category_name: string | null;
+  quantity_sold: number;
+  total_revenue: number;
+  total_profit: number;
+  current_stock: number;
+  total_cost?: number;
+  profit_margin?: number;
+}
+
+export interface ReportPaymentSplit {
+  method: string;
+  order_count: number;
+  total_revenue: number;
+  share_percent: number;
+}
+
+export interface ReportLowStockSellingFast {
+  product_id: number;
+  product_name: string;
+  category_id: number | null;
+  category_name: string | null;
+  current_stock: number;
+  quantity_sold: number;
+  avg_daily_quantity: number;
+  days_to_stockout: number | null;
+  total_revenue: number;
+}
+
+export interface ReportDeadStock {
+  product_id: number;
+  product_name: string;
+  category_id: number | null;
+  category_name: string | null;
+  current_stock: number;
+  unit_cost: number;
+  inventory_value: number;
+  last_sold_at: string | null;
+  days_since_last_sale: number | null;
+}
+
+export interface PreviousPeriodComparison {
+  current: SalesSummary;
+  previous: SalesSummary;
+  change: {
+    sales_delta: number;
+    items_sold_delta: number;
+    revenue_delta: number;
+    profit_delta: number;
+    sales_percent: number | null;
+    items_sold_percent: number | null;
+    revenue_percent: number | null;
+    profit_percent: number | null;
+  };
+}
+
 export const getSalesReport = async (
   start_date: string,
   end_date: string,
@@ -509,6 +568,97 @@ export const getSalesReport = async (
     query.append("product_id", filters.product_id.toString());
   const endpoint = `/reports/sales?${query.toString()}`;
   return fetchApi(endpoint, "GET");
+};
+
+const buildReportQuery = (
+  start_date: string,
+  end_date: string,
+  filters?: {
+    category_id?: number;
+    product_id?: number;
+    limit?: number;
+    low_stock_threshold?: number;
+    previous_start_date?: string;
+    previous_end_date?: string;
+  }
+) => {
+  const query = new URLSearchParams({ start_date, end_date });
+  if (filters?.category_id)
+    query.append("category_id", filters.category_id.toString());
+  if (filters?.product_id)
+    query.append("product_id", filters.product_id.toString());
+  if (filters?.limit) query.append("limit", filters.limit.toString());
+  if (filters?.low_stock_threshold !== undefined)
+    query.append("low_stock_threshold", filters.low_stock_threshold.toString());
+  if (filters?.previous_start_date)
+    query.append("previous_start_date", filters.previous_start_date);
+  if (filters?.previous_end_date)
+    query.append("previous_end_date", filters.previous_end_date);
+  return query;
+};
+
+export const getBestSellersReport = async (
+  start_date: string,
+  end_date: string,
+  filters?: { category_id?: number; product_id?: number; limit?: number }
+): Promise<{ message: string; data: ReportProductPerformance[] }> => {
+  const query = buildReportQuery(start_date, end_date, filters);
+  return fetchApi(`/reports/best-sellers?${query.toString()}`, "GET");
+};
+
+export const getProfitBreakdownReport = async (
+  start_date: string,
+  end_date: string,
+  filters?: { category_id?: number; product_id?: number; limit?: number }
+): Promise<{ message: string; data: ReportProductPerformance[] }> => {
+  const query = buildReportQuery(start_date, end_date, filters);
+  return fetchApi(`/reports/profit-breakdown?${query.toString()}`, "GET");
+};
+
+export const getPaymentSplitReport = async (
+  start_date: string,
+  end_date: string,
+  filters?: { category_id?: number; product_id?: number }
+): Promise<{ message: string; data: ReportPaymentSplit[] }> => {
+  const query = buildReportQuery(start_date, end_date, filters);
+  return fetchApi(`/reports/payment-split?${query.toString()}`, "GET");
+};
+
+export const getLowStockSellingFastReport = async (
+  start_date: string,
+  end_date: string,
+  filters?: {
+    category_id?: number;
+    product_id?: number;
+    low_stock_threshold?: number;
+    limit?: number;
+  }
+): Promise<{ message: string; data: ReportLowStockSellingFast[] }> => {
+  const query = buildReportQuery(start_date, end_date, filters);
+  return fetchApi(`/reports/low-stock-selling-fast?${query.toString()}`, "GET");
+};
+
+export const getDeadStockReport = async (
+  start_date: string,
+  end_date: string,
+  filters?: { category_id?: number; product_id?: number; limit?: number }
+): Promise<{ message: string; data: ReportDeadStock[] }> => {
+  const query = buildReportQuery(start_date, end_date, filters);
+  return fetchApi(`/reports/dead-stock?${query.toString()}`, "GET");
+};
+
+export const getPreviousPeriodComparisonReport = async (
+  start_date: string,
+  end_date: string,
+  filters?: {
+    category_id?: number;
+    product_id?: number;
+    previous_start_date?: string;
+    previous_end_date?: string;
+  }
+): Promise<{ message: string; data: PreviousPeriodComparison }> => {
+  const query = buildReportQuery(start_date, end_date, filters);
+  return fetchApi(`/reports/previous-period-comparison?${query.toString()}`, "GET");
 };
 
 // --- Counter Ledger API Calls ---

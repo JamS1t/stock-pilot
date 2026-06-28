@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { getStoreRole, StoreRole } from "../services/settings.service";
 import { ApiError } from "../utils/apiError";
+import { logger } from "../utils/logger.util";
 
 declare global {
   namespace Express {
@@ -31,7 +32,12 @@ export function requireStoreRole(allowedRoles: StoreRole[]) {
           .status(err.status)
           .json({ error: err.code, message: err.message });
       }
-      console.error("Role check failed:", err);
+
+      logger.error("auth.role_check_failed", {
+        error: err,
+        store_id: req.user?.store_id || null,
+        user_id: req.user?.user_id || null,
+      });
       return res.status(500).json({
         error: "SERVER_ERROR",
         message: "Internal server error.",

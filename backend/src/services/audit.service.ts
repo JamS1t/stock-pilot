@@ -1,4 +1,5 @@
 import { pool } from "../config/db";
+import { logger } from "../utils/logger.util";
 
 export interface AuditContext {
   storeId: number;
@@ -41,6 +42,13 @@ export async function logAuditSafe(
   try {
     await logAudit(context, action, entityType, entityId, metadata);
   } catch (err) {
-    console.error("Audit log write failed:", err);
+    logger.error("audit.write_failed", {
+      error: err,
+      store_id: context.storeId,
+      user_id: context.userId,
+      action,
+      entity_type: entityType,
+      entity_id: entityId,
+    });
   }
 }

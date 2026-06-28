@@ -13,6 +13,7 @@ import {
 import { safeJSONParse } from "../utils/json.util";
 import { successResponse, errorResponse } from "../utils/response.util";
 import { logAuditSafe } from "../services/audit.service";
+import { logger } from "../utils/logger.util";
 
 const ORDER_SORT_KEYS = [
   "order_id",
@@ -82,7 +83,15 @@ export async function processOrderPOSHandler(req: Request, res: Response) {
 
     return successResponse(res, "Order processed successfully", result, 201);
   } catch (err: any) {
-    console.error("Order process error:", err);
+    logger.error("order.process_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+      user_id: req.user?.user_id || null,
+      item_count: Array.isArray(req.body?.payload?.items)
+        ? req.body.payload.items.length
+        : 0,
+      payment_method: req.body?.payload?.payment_method || null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");
@@ -226,7 +235,11 @@ export async function getOrderHistoryHandler(req: Request, res: Response) {
       buildPaginationMeta(pagination.page, pagination.pageSize, total)
     );
   } catch (err: any) {
-    console.error("Order history fetch error:", err);
+    logger.error("order.history_fetch_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+      query: req.query,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");
@@ -259,7 +272,13 @@ export async function voidOrderHandler(req: Request, res: Response) {
 
     return successResponse(res, "Order void flow completed successfully", result);
   } catch (err: any) {
-    console.error("Order void error:", err);
+    logger.error("order.void_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+      user_id: req.user?.user_id || null,
+      order_id: req.params.id || null,
+      action: req.body?.action || null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");

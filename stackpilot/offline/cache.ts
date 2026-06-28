@@ -1,5 +1,5 @@
 import { Customer, Product } from "../utils/api";
-import { putInStore, readAllFromStore } from "./db";
+import { getFromStore, putInStore, readAllFromStore } from "./db";
 
 type CachedProduct = Product & { local_id: string; cached_at: string };
 type CachedCustomer = Customer & { local_id: string; cached_at: string };
@@ -29,6 +29,11 @@ export async function readCachedProducts() {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+export async function readCachedProductById(productId: number) {
+  const row = await getFromStore<CachedProduct>("products", `product:${productId}`);
+  return row ? (stripCacheFields(row) as Product) : null;
+}
+
 export async function cacheCustomers(customers: Customer[]) {
   const cachedAt = new Date().toISOString();
   for (const customer of customers) {
@@ -45,4 +50,12 @@ export async function readCachedCustomers() {
   return rows
     .map((row) => stripCacheFields(row) as Customer)
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function readCachedCustomerById(customerId: number) {
+  const row = await getFromStore<CachedCustomer>(
+    "customers",
+    `customer:${customerId}`
+  );
+  return row ? (stripCacheFields(row) as Customer) : null;
 }

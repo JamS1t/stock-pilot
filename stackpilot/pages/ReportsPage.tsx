@@ -11,11 +11,18 @@ import {
   getSalesReport,
   getCategories,
   getProducts,
-  getOrderInvoice,
+  getProfitBreakdownReport,
+  getPaymentSplitReport,
+  getLowStockSellingFastReport,
+  getDeadStockReport,
+  getPreviousPeriodComparisonReport,
   Category,
-  OrderListItem,
-  OrdersListRow,
+  PreviousPeriodComparison,
   Product,
+  ReportDeadStock,
+  ReportLowStockSellingFast,
+  ReportPaymentSplit,
+  ReportProductPerformance,
   SalesReportResponse,
 } from "../utils/api";
 import { useAuth } from "../context/AuthContext";
@@ -28,29 +35,21 @@ interface ReportsPageProps {
 type Timeframe = "today" | "week" | "month" | "year";
 type Granularity = "minute" | "day";
 
-interface ReportOrderItem {
-  product: string;
-  qty: number;
-  price: number;
-  total: number;
-}
-
-interface ReportOrder {
-  order_id: number;
-  order_date: string;
-  total: number;
-  payment_method?: string;
-  items: ReportOrderItem[];
-}
-
 const ReportsPage: React.FC<ReportsPageProps> = () => {
   const { isAuthenticated } = useAuth();
   const [salesReport, setSalesReport] = useState<SalesReportResponse | null>(
     null
   );
-  const [previousSalesReport, setPreviousSalesReport] =
-    useState<SalesReportResponse | null>(null);
-  const [reportOrders, setReportOrders] = useState<ReportOrder[]>([]);
+  const [comparisonReport, setComparisonReport] =
+    useState<PreviousPeriodComparison | null>(null);
+  const [productPerformance, setProductPerformance] = useState<
+    ReportProductPerformance[]
+  >([]);
+  const [paymentSplit, setPaymentSplit] = useState<ReportPaymentSplit[]>([]);
+  const [lowStockSellingFast, setLowStockSellingFast] = useState<
+    ReportLowStockSellingFast[]
+  >([]);
+  const [deadStock, setDeadStock] = useState<ReportDeadStock[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,66 +99,50 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
     };
   };
 
-  const getPreviousDatesForTimeframe = (
-    tf: Timeframe
-  ): { startDate: string; endDate: string; granularity: Granularity } => {
-    const current = getDatesForTimeframe(tf);
-    const currentStart = new Date(`${current.startDate}T00:00:00`);
-    const currentEnd = new Date(`${current.endDate}T23:59:59`);
-    const dayMs = 24 * 60 * 60 * 1000;
-    const days = Math.max(
-      1,
-      Math.ceil((currentEnd.getTime() - currentStart.getTime()) / dayMs)
-    );
-    const previousEnd = new Date(currentStart);
-    previousEnd.setDate(previousEnd.getDate() - 1);
-    const previousStart = new Date(previousEnd);
-    previousStart.setDate(previousStart.getDate() - days + 1);
-    const format = (date: Date) => date.toISOString().split("T")[0];
-
-    return {
-      startDate: format(previousStart),
-      endDate: format(previousEnd),
-      granularity: current.granularity,
-    };
-  };
-
   const fetchReportData = useCallback(async () => {
     if (!isAuthenticated) return;
     setLoading(true);
     setError(null);
 
     const { startDate, endDate, granularity } = getDatesForTimeframe(timeframe);
-    const previous = getPreviousDatesForTimeframe(timeframe);
+    const reportFilters = {
+      category_id:
+        debouncedCategoryFilter !== ""
+          ? Number(debouncedCategoryFilter)
+          : undefined,
+      product_id:
+        debouncedProductFilter !== ""
+          ? Number(debouncedProductFilter)
+          : undefined,
+    };
 
     try {
       const [
         reportResponse,
-        previousReportResponse,
+        comparisonResponse,
+        productPerformanceResponse,
+        paymentSplitResponse,
+        lowStockSellingFastResponse,
+        deadStockResponse,
         categoriesResponse,
         productsResponse,
-        ordersResponse,
       ] =
         await Promise.all([
-          getSalesReport(startDate, endDate, granularity, {
-            category_id:
-              debouncedCategoryFilter !== ""
-                ? Number(debouncedCategoryFilter)
-                : undefined,
-            product_id:
-              debouncedProductFilter !== ""
-                ? Number(debouncedProductFilter)
-                : undefined,
+          getSalesReport(startDate, endDate, granularity, reportFilters),
+          getPreviousPeriodComparisonReport(startDate, endDate, reportFilters),
+          getProfitBreakdownReport(startDate, endDate, {
+            ...reportFilters,
+            limit: 8,
           }),
-          getSalesReport(previous.startDate, previous.endDate, previous.granularity, {
-            category_id:
-              debouncedCategoryFilter !== ""
-                ? Number(debouncedCategoryFilter)
-                : undefined,
-            product_id:
-              debouncedProductFilter !== ""
-                ? Number(debouncedProductFilter)
-                : undefined,
+          getPaymentSplitReport(startDate, endDate, reportFilters),
+          getLowStockSellingFastReport(startDate, endDate, {
+            ...reportFilters,
+            low_stock_threshold: 10,
+            limit: 5,
+          }),
+          getDeadStockReport(startDate, endDate, {
+            ...reportFilters,
+            limit: 5,
           }),
           getCategories(),
           getProducts({
@@ -168,14 +151,14 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
                 ? Number(debouncedCategoryFilter)
                 : undefined,
           }),
-          getOrderInvoice({}),
         ]);
 
-      // console.log("Sales report response:", reportResponse);
-
-      // Handle the response structure - check what's actually returned
       setSalesReport(reportResponse.data || reportResponse);
-      setPreviousSalesReport(previousReportResponse.data || previousReportResponse);
+      setComparisonReport(comparisonResponse.data);
+      setProductPerformance(productPerformanceResponse.data || []);
+      setPaymentSplit(paymentSplitResponse.data || []);
+      setLowStockSellingFast(lowStockSellingFastResponse.data || []);
+      setDeadStock(deadStockResponse.data || []);
 
       setCategories(
         Array.isArray(categoriesResponse.data)
@@ -183,30 +166,6 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
           : [categoriesResponse.data]
       );
       setProducts(productsResponse.data || []);
-
-      const firstOrderRow = Array.isArray(ordersResponse.data)
-        ? (ordersResponse.data[0] as OrdersListRow | undefined)
-        : undefined;
-      const ordersJsonRaw = firstOrderRow?.orders_json ?? ordersResponse.data;
-      let parsedOrders: OrderListItem[] = [];
-      if (typeof ordersJsonRaw === "string") {
-        try {
-          parsedOrders = JSON.parse(ordersJsonRaw) as OrderListItem[];
-        } catch {
-          parsedOrders = [];
-        }
-      } else if (Array.isArray(ordersJsonRaw)) {
-        parsedOrders = ordersJsonRaw as OrderListItem[];
-      }
-
-      const startTime = new Date(`${startDate}T00:00:00`).getTime();
-      const endTime = new Date(`${endDate}T23:59:59`).getTime();
-      setReportOrders(
-        parsedOrders.filter((order) => {
-          const orderTime = new Date(order.order_date).getTime();
-          return orderTime >= startTime && orderTime <= endTime;
-        }) as ReportOrder[]
-      );
     } catch (err: any) {
       // console.error("Failed to fetch report data:", err);
       setError(err.message || "Failed to fetch report data.");
@@ -259,119 +218,22 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
     }, [salesReport]);
 
   const previousSummary = useMemo(() => {
-    const summary = previousSalesReport?.summary;
+    const summary = comparisonReport?.previous;
     return {
       revenue: summary?.total_revenue || 0,
       profit: summary?.total_profit || 0,
       sales: summary?.total_sales || 0,
       itemsSold: summary?.total_items_sold || 0,
     };
-  }, [previousSalesReport]);
+  }, [comparisonReport]);
 
   const revenueChangePercent = useMemo(() => {
+    if (comparisonReport?.change?.revenue_percent !== undefined) {
+      return comparisonReport.change.revenue_percent;
+    }
     if (previousSummary.revenue <= 0) return null;
     return ((totalRevenue - previousSummary.revenue) / previousSummary.revenue) * 100;
-  }, [previousSummary.revenue, totalRevenue]);
-
-  const businessInsights = useMemo(() => {
-    const productByName = new Map(
-      products.map((product) => [product.name.toLowerCase(), product])
-    );
-    const selectedProductId =
-      productFilter !== "" ? Number(productFilter) : null;
-    const selectedCategoryId =
-      categoryFilter !== "" ? Number(categoryFilter) : null;
-    const productRows = new Map<
-      string,
-      {
-        name: string;
-        quantity: number;
-        revenue: number;
-        profit: number | null;
-        stock: number | null;
-      }
-    >();
-    const paymentRows = new Map<string, number>();
-
-    const isItemInScope = (item: ReportOrderItem) => {
-      const product = productByName.get(item.product.toLowerCase());
-      if (selectedProductId !== null) {
-        return product?.product_id === selectedProductId;
-      }
-      if (selectedCategoryId !== null) {
-        return product?.category_id === selectedCategoryId;
-      }
-      return true;
-    };
-
-    for (const order of reportOrders) {
-      let scopedOrderTotal = 0;
-
-      for (const item of order.items || []) {
-        if (!isItemInScope(item)) continue;
-
-        const product = productByName.get(item.product.toLowerCase());
-        const quantity = Number(item.qty || 0);
-        const revenue = Number(item.total || item.price * quantity || 0);
-        const profit =
-          product && Number.isFinite(Number(product.unit_price))
-            ? (Number(item.price || 0) - Number(product.unit_price || 0)) * quantity
-            : null;
-        const existing = productRows.get(item.product) || {
-          name: item.product,
-          quantity: 0,
-          revenue: 0,
-          profit: product ? 0 : null,
-          stock: product?.stock ?? null,
-        };
-
-        existing.quantity += quantity;
-        existing.revenue += revenue;
-        existing.stock = product?.stock ?? existing.stock;
-        existing.profit =
-          existing.profit === null || profit === null
-            ? null
-            : existing.profit + profit;
-        productRows.set(item.product, existing);
-        scopedOrderTotal += revenue;
-      }
-
-      if (scopedOrderTotal > 0) {
-        const method = (order.payment_method || "unknown").toLowerCase();
-        paymentRows.set(method, (paymentRows.get(method) || 0) + scopedOrderTotal);
-      }
-    }
-
-    const productBreakdown = [...productRows.values()].sort(
-      (a, b) => b.revenue - a.revenue
-    );
-    const lowStockSellingFast = productBreakdown
-      .filter((row) => row.stock !== null && row.stock <= 10 && row.quantity > 0)
-      .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 5);
-    const soldNames = new Set(
-      productBreakdown.map((row) => row.name.toLowerCase())
-    );
-    const deadStock = products
-      .filter(
-        (product) =>
-          product.stock > 0 &&
-          !soldNames.has(product.name.toLowerCase()) &&
-          (selectedCategoryId === null || product.category_id === selectedCategoryId) &&
-          (selectedProductId === null || product.product_id === selectedProductId)
-      )
-      .slice(0, 5);
-    const paymentSplit = [...paymentRows.entries()]
-      .map(([method, amount]) => ({ method, amount }))
-      .sort((a, b) => b.amount - a.amount);
-
-    return {
-      productBreakdown,
-      paymentSplit,
-      lowStockSellingFast,
-      deadStock,
-    };
-  }, [categoryFilter, productFilter, products, reportOrders]);
+  }, [comparisonReport, previousSummary.revenue, totalRevenue]);
 
   const chartData = useMemo(() => {
     if (!salesReport?.chart || !Array.isArray(salesReport.chart)) return [];
@@ -605,7 +467,7 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
               <h2 className="mb-4 font-display text-lg font-semibold text-ink">
                 Product performance
               </h2>
-              {businessInsights.productBreakdown.length > 0 ? (
+              {productPerformance.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="data-table">
                     <thead>
@@ -617,17 +479,17 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {businessInsights.productBreakdown.slice(0, 8).map((row) => (
-                        <tr key={row.name}>
-                          <td className="font-semibold text-ink">{row.name}</td>
-                          <td className="money text-right">{row.quantity}</td>
+                      {productPerformance.map((row) => (
+                        <tr key={row.product_id}>
+                          <td className="font-semibold text-ink">
+                            {row.product_name}
+                          </td>
+                          <td className="money text-right">{row.quantity_sold}</td>
                           <td className="money text-right font-semibold text-ink">
-                            {formatCurrency(row.revenue)}
+                            {formatCurrency(row.total_revenue)}
                           </td>
                           <td className="money text-right text-muted">
-                            {row.profit === null
-                              ? "No cost"
-                              : formatCurrency(row.profit)}
+                            {formatCurrency(row.total_profit)}
                           </td>
                         </tr>
                       ))}
@@ -643,9 +505,9 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
               <h2 className="mb-4 font-display text-lg font-semibold text-ink">
                 Payment split
               </h2>
-              {businessInsights.paymentSplit.length > 0 ? (
+              {paymentSplit.length > 0 ? (
                 <div className="space-y-2">
-                  {businessInsights.paymentSplit.map((row) => (
+                  {paymentSplit.map((row) => (
                     <div
                       key={row.method}
                       className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3 py-2.5"
@@ -654,7 +516,7 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
                         {row.method}
                       </span>
                       <span className="money font-bold text-peso">
-                        {formatCurrency(row.amount)}
+                        {formatCurrency(row.total_revenue)}
                       </span>
                     </div>
                   ))}
@@ -670,20 +532,24 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
               <h2 className="mb-4 font-display text-lg font-semibold text-ink">
                 Low stock, still selling
               </h2>
-              {businessInsights.lowStockSellingFast.length > 0 ? (
+              {lowStockSellingFast.length > 0 ? (
                 <div className="space-y-2">
-                  {businessInsights.lowStockSellingFast.map((row) => (
+                  {lowStockSellingFast.map((row) => (
                     <div
-                      key={row.name}
+                      key={row.product_id}
                       className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3 py-2.5"
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-ink">
-                          {row.name}
+                          {row.product_name}
                         </p>
-                        <p className="text-xs text-muted">Sold {row.quantity}</p>
+                        <p className="text-xs text-muted">
+                          Sold {row.quantity_sold}
+                        </p>
                       </div>
-                      <span className="pill pill-warn">Stock {row.stock}</span>
+                      <span className="pill pill-warn">
+                        Stock {row.current_stock}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -696,18 +562,18 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
               <h2 className="mb-4 font-display text-lg font-semibold text-ink">
                 Dead stock signal
               </h2>
-              {businessInsights.deadStock.length > 0 ? (
+              {deadStock.length > 0 ? (
                 <div className="space-y-2">
-                  {businessInsights.deadStock.map((product) => (
+                  {deadStock.map((product) => (
                     <div
                       key={product.product_id}
                       className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3 py-2.5"
                     >
                       <span className="truncate text-sm font-semibold text-ink">
-                        {product.name}
+                        {product.product_name}
                       </span>
                       <span className="money text-sm text-muted">
-                        Stock {product.stock}
+                        Stock {product.current_stock}
                       </span>
                     </div>
                   ))}

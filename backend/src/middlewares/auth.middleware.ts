@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { ApiError } from "../utils/apiError";
+import { logger } from "../utils/logger.util";
 
-// ✅ Define the shape of your token payload
 interface JwtPayload {
   user_id: number;
   store_id: number;
@@ -10,7 +10,6 @@ interface JwtPayload {
   exp?: number;
 }
 
-// ✅ Extend Express Request to include `user`
 declare global {
   namespace Express {
     interface Request {
@@ -29,9 +28,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     const token = authHeader.split(" ")[1];
     const secret = process.env.JWT_ACCESS_SECRET;
     if (!secret) {
-      console.error(
-        "⚠️ JWT_ACCESS_SECRET is missing in environment variables."
-      );
+      logger.error("auth.jwt_secret_missing");
       throw new ApiError(500, "SERVER_MISCONFIG", "Server misconfiguration.");
     }
 
@@ -41,7 +38,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
       throw new ApiError(401, "INVALID_TOKEN", "Malformed access token.");
     }
 
-    req.user = decoded; // ✅ Attach user to the request
+    req.user = decoded;
     next();
   } catch (err: any) {
     if (err instanceof ApiError) {
@@ -50,12 +47,14 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
         .json({ error: err.code, message: err.message });
     }
 
-    console.error("JWT verification failed:", err);
-    return res
-      .status(401)
-      .json({
-        error: "INVALID_TOKEN",
-        message: "Access token is invalid or expired.",
-      });
+    logger.warn("auth.jwt_verification_failed", {
+      error: err,
+      path: req.path,
+      method: req.method,
+    });
+    return res.status(401).json({
+      error: "INVALID_TOKEN",
+      message: "Access token is invalid or expired.",
+    });
   }
 }
