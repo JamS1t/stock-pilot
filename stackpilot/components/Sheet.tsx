@@ -54,9 +54,9 @@ const Sheet: React.FC<SheetProps> = ({
 
       if (e.key !== 'Tab' || !panelRef.current) return;
 
-      const focusable = Array.from(
-        panelRef.current.querySelectorAll<HTMLElement>(focusableSelector)
-      ).filter((element) => !element.hasAttribute('disabled') && element.tabIndex !== -1);
+      const focusable = [
+        ...panelRef.current.querySelectorAll<HTMLElement>(focusableSelector),
+      ].filter((element) => !element.hasAttribute('disabled') && element.tabIndex !== -1);
 
       if (focusable.length === 0) {
         e.preventDefault();
