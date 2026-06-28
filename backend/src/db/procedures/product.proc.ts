@@ -8,7 +8,7 @@ export async function CreateProduct(
   sellingPrice: number,
   stock: number,
   categoryId: number,
-  supplierId: number,
+  supplierId: number | null,
   barcode: string | null
 ) {
   return callProc("CreateProduct", [
@@ -58,15 +58,28 @@ export async function GetProducts(
   storeId: number,
   search: string | null = null,
   categoryId: number | null = null,
+  supplierId: number | null = null,
   stockStatus: "Out of Stock" | "Low Stock" | "In Stock" | null = null
 ) {
-  const rows = await callProc<any>("GetProducts", [
-    storeId,
-    search,
-    categoryId,
-    stockStatus,
-  ]);
-  return rows;
+  try {
+    const rows = await callProc<any>("GetProducts", [
+      storeId,
+      search,
+      categoryId,
+      supplierId,
+      stockStatus,
+    ]);
+    return rows;
+  } catch (err: any) {
+    if (err?.code !== "ER_SP_WRONG_NO_OF_ARGS") throw err;
+
+    return callProc<any>("GetProducts", [
+      storeId,
+      search,
+      categoryId,
+      stockStatus,
+    ]);
+  }
 }
 
 export async function GetProductById(storeId: number, id: number) {

@@ -6,14 +6,19 @@ import { successResponse, errorResponse } from "../utils/response.util";
 
 export async function processOrderPOSHandler(req: Request, res: Response) {
   try {
-    const { payload } = req.body;
+    const { payload, client_mutation_id, device_id, local_id } = req.body;
     const { store_id } = req.user!;
 
     if (!payload) {
       throw new ApiError(400, "PAYLOAD_REQUIRED", "Order payload is required.");
     }
 
-    const result = await processOrderPOS(store_id, payload);
+    const result = await processOrderPOS(store_id, {
+      ...payload,
+      client_mutation_id: payload.client_mutation_id || client_mutation_id || null,
+      device_id: payload.device_id || device_id || null,
+      local_id: payload.local_id || local_id || null,
+    });
 
     return successResponse(res, "Order processed successfully", result, 201);
   } catch (err: any) {

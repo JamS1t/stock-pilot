@@ -1,68 +1,80 @@
+import React from "react";
+import { useAuth } from "../context/AuthContext";
 
-import React from 'react';
-
-// Mock data for demonstration purposes
-const mockUsers = [
-    { id: 1, name: 'Admin User', email: 'admin@example.com', role: 'Admin' },
-    { id: 2, name: 'Manager User', email: 'manager@example.com', role: 'Manager' },
-    { id: 3, name: 'Cashier User', email: 'cashier@example.com', role: 'Cashier' },
-    { id: 4, name: 'Staff User', email: 'staff@example.com', role: 'Staff' },
-];
-
-const RoleBadge: React.FC<{ role: string }> = ({ role }) => {
-    const roleColors: { [key: string]: string } = {
-        'Admin': 'bg-red-500/20 text-red-400',
-        'Manager': 'bg-yellow-500/20 text-yellow-400',
-        'Cashier': 'bg-sky-500/20 text-sky-400',
-        'Staff': 'bg-green-500/20 text-green-400',
-    };
-    return (
-        <span className={`px-2 py-1 text-xs font-medium rounded-full ${roleColors[role] || 'bg-gray-500/20 text-gray-400'}`}>
-            {role}
-        </span>
-    );
-};
+const FieldRow: React.FC<{ label: string; value: React.ReactNode }> = ({
+  label,
+  value,
+}) => (
+  <div className="flex items-center justify-between gap-4 border-b border-line py-3 last:border-0">
+    <span className="text-sm text-muted">{label}</span>
+    <span className="text-right text-sm font-semibold text-ink">{value}</span>
+  </div>
+);
 
 const AdminSettingsPage: React.FC = () => {
-    return (
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-            <header className="mb-8">
-                <h1 className="text-3xl font-bold text-white tracking-tight">Admin Settings</h1>
-                <p className="text-gray-400">Manage users, roles, and system settings.</p>
-            </header>
+  const { user, store, role } = useAuth();
+  const storeName = store?.name || store?.store_name || "Current store";
 
-            <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
-                 <h2 className="text-xl font-semibold text-white mb-4">User Management</h2>
-                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-400">
-                        <thead className="text-xs text-gray-300 uppercase bg-gray-700/50">
-                            <tr>
-                                <th scope="col" className="px-6 py-3">User</th>
-                                <th scope="col" className="px-6 py-3">Role</th>
-                                <th scope="col" className="px-6 py-3">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {mockUsers.map((user) => (
-                                <tr key={user.id} className="border-b border-gray-700 hover:bg-gray-700/50">
-                                    <td className="px-6 py-4 font-medium text-white">
-                                        <div>{user.name}</div>
-                                        <div className="text-xs text-gray-500">{user.email}</div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <RoleBadge role={user.role} />
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="text-green-400">Active</span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+  return (
+    <main className="page">
+      <div className="page-inner space-y-4 lg:space-y-5">
+        <header className="pl-12 lg:pl-0">
+          <p className="eyebrow">Pamamahala</p>
+          <h1 className="page-title mt-1">Settings</h1>
+          <p className="mt-1 text-sm text-muted">
+            Review the live store and account configuration for this session.
+          </p>
+        </header>
+
+        <section className="grid gap-4 lg:grid-cols-2">
+          <div className="card p-4 lg:p-5">
+            <h2 className="mb-3 font-display text-lg font-semibold text-ink">
+              Store settings
+            </h2>
+            <FieldRow label="Store name" value={storeName} />
+            <FieldRow label="Timezone" value={store?.timezone || "Not set"} />
+            <FieldRow label="Currency" value={store?.currency || "Not set"} />
+            <FieldRow
+              label="Receipt details"
+              value={<span className="text-muted">Not configured</span>}
+            />
+            <FieldRow
+              label="Tax settings"
+              value={<span className="text-muted">Not configured</span>}
+            />
+          </div>
+
+          <div className="card p-4 lg:p-5">
+            <h2 className="mb-3 font-display text-lg font-semibold text-ink">
+              Current user
+            </h2>
+            <FieldRow label="Name" value={user?.name || "Not available"} />
+            <FieldRow label="Email" value={user?.email || "Not available"} />
+            <FieldRow label="Role" value={role || "Not available"} />
+            <FieldRow
+              label="Permissions"
+              value={<span className="text-muted">Server enforced</span>}
+            />
+          </div>
+        </section>
+
+        <section className="card p-4 lg:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-display text-lg font-semibold text-ink">
+                User and role management
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm text-muted">
+                User management is hidden until real backend role APIs and
+                permission enforcement are available.
+              </p>
             </div>
-        </main>
-    );
+            <span className="pill pill-muted">Not enabled</span>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
 };
 
 export default AdminSettingsPage;

@@ -1,6 +1,10 @@
 import { getAuthContext } from "@/context/AuthContext";
 
-const API_BASE_URL =  "https://stock-pilot-production.up.railway.app/api";
+// Configurable per environment. In dev, `.env.development` points this at the
+// local backend (http://localhost:5000/api). Production builds fall back to Railway.
+const API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
+  "https://stock-pilot-production.up.railway.app/api";
 
 let refreshPromise: Promise<string | null> | null = null;
 
@@ -225,7 +229,7 @@ export interface Product {
   stock: number;
   category_id: number;
   category_name?: string; // Optional for some responses
-  supplier_id: number;
+  supplier_id: number | null;
   supplier_name?: string; // Optional for some responses
   barcode: string | null;
   store_id: number;
@@ -294,7 +298,7 @@ export const searchProductsForPos = async (
 ): Promise<{ message: string; data: Product[] }> => {
   const query = new URLSearchParams({ search });
   if (categoryId) query.append("category_id", categoryId.toString());
-  const endpoint = `/products/search?${query.toString()}`;
+  const endpoint = `/products/pos?${query.toString()}`;
   return fetchApi(endpoint, "GET");
 };
 
@@ -363,10 +367,30 @@ interface ProcessOrderResponse {
   order_id: number;
 }
 
+export interface ProcessOrderPayload {
+  sub_total: number;
+  tax: number;
+  total: number;
+  discount: number;
+  discount_amount: number;
+  discount_type: string | null;
+  payment_method: string;
+  items: {
+    product_id: number;
+    name: string;
+    price: number;
+    quantity: number;
+    category_id: number;
+  }[];
+  client_mutation_id?: string;
+  device_id?: string;
+  local_id?: string;
+}
+
 // --- ORDER PROCEDURES INTEGRATION ---
 
 export const processOrderPOS = async (
-  payload: any
+  payload: ProcessOrderPayload
 ): Promise<{ message: string; data: ProcessOrderResponse }> => {
   return fetchApi("/orders/process", "POST", { payload });
 };
@@ -427,5 +451,315 @@ export const getSalesReport = async (
   if (filters?.product_id)
     query.append("product_id", filters.product_id.toString());
   const endpoint = `/reports/sales?${query.toString()}`;
+  return fetchApi(endpoint, "GET");
+};
+
+// --- Counter Ledger API Calls ---
+export interface Customer {
+  customer_id: number;
+  name: string;
+  phone: string | null;
+  photo_url: string | null;
+  notes: string | null;
+  created_at?: string;
+  updated_at?: string;
+  balance?: number;
+  last_activity_at?: string | null;
+}
+
+export interface CustomerInput {
+  name: string;
+  phone?: string | null;
+  photo_url?: string | null;
+  notes?: string | null;
+}
+
+export interface UtangItemInput {
+  product_id?: number | null;
+  name: string;
+  quantity?: number;
+  unit_price?: number | null;
+  line_total?: number | null;
+}
+
+export type UtangSource = "manual" | "voice" | "ocr";
+
+export interface UtangEntry {
+  entry_id: number;
+  customer_id: number;
+  amount: number;
+  note: string | null;
+  source: UtangSource;
+  created_by: number | null;
+  created_at: string;
+  voided_at: string | null;
+  voided_by: number | null;
+  items: UtangItemInput[] | null;
+}
+
+export interface CreateUtangInput {
+  customer_id: number;
+  amount: number;
+  note?: string | null;
+  source?: UtangSource;
+  items?: UtangItemInput[] | null;
+  client_mutation_id?: string;
+  device_id?: string;
+  local_id?: string;
+}
+
+export type LedgerPaymentMethod = "cash" | "gcash" | "other";
+
+export interface UtangPayment {
+  payment_id: number;
+  customer_id: number;
+  amount: number;
+  method: LedgerPaymentMethod;
+  note: string | null;
+  created_by: number | null;
+  created_at: string;
+  voided_at: string | null;
+  voided_by: number | null;
+}
+
+export interface CreatePaymentInput {
+  customer_id: number;
+  amount: number;
+  method?: LedgerPaymentMethod;
+  note?: string | null;
+  client_mutation_id?: string;
+  device_id?: string;
+  local_id?: string;
+}
+
+export interface CustomerBalance {
+  customer_id: number;
+  balance: number;
+  last_activity_at: string | null;
+}
+
+export interface WhoOwesCustomer {
+  customer_id: number;
+  name: string;
+  phone: string | null;
+  photo_url: string | null;
+  balance: number;
+  last_activity_at: string | null;
+  oldest_unpaid_at: string | null;
+}
+
+export interface MutationResult {
+  affected_rows: number;
+}
+
+export interface CreatedCustomerResult {
+  customer_id: number;
+}
+
+export interface CreatedUtangResult {
+  entry_id: number;
+}
+
+export interface CreatedPaymentResult {
+  payment_id: number;
+}
+
+export const getCustomers = async (filters?: {
+  id?: number;
+  search?: string;
+}): Promise<{ message: string; data: Customer[] }> => {
+  const query = new URLSearchParams();
+  if (filters?.id) query.append("id", filters.id.toString());
+  if (filters?.search) query.append("search", filters.search);
+  const endpoint = `/customers${query.toString() ? `?${query.toString()}` : ""}`;
+  return fetchApi(endpoint, "GET");
+};
+
+export const createCustomer = async (
+  customer: CustomerInput
+): Promise<{ message: string; data: CreatedCustomerResult }> => {
+  return fetchApi("/customers", "POST", customer);
+};
+
+export const updateCustomer = async (
+  id: number,
+  customer: CustomerInput
+): Promise<{ message: string; data: MutationResult }> => {
+  return fetchApi(`/customers/${id}`, "PUT", customer);
+};
+
+export const deleteCustomer = async (
+  id: number
+): Promise<{ message: string; data: MutationResult }> => {
+  return fetchApi(`/customers/${id}`, "DELETE");
+};
+
+export const listUtang = async (filters?: {
+  customer_id?: number;
+  from?: string;
+  to?: string;
+}): Promise<{ message: string; data: UtangEntry[] }> => {
+  const query = new URLSearchParams();
+  if (filters?.customer_id)
+    query.append("customer_id", filters.customer_id.toString());
+  if (filters?.from) query.append("from", filters.from);
+  if (filters?.to) query.append("to", filters.to);
+  const endpoint = `/utang${query.toString() ? `?${query.toString()}` : ""}`;
+  return fetchApi(endpoint, "GET");
+};
+
+export const createUtang = async (
+  utang: CreateUtangInput
+): Promise<{ message: string; data: CreatedUtangResult }> => {
+  return fetchApi("/utang", "POST", utang);
+};
+
+export const voidUtang = async (
+  id: number
+): Promise<{ message: string; data: MutationResult }> => {
+  return fetchApi(`/utang/${id}/void`, "POST");
+};
+
+export const getWhoOwes = async (): Promise<{
+  message: string;
+  data: WhoOwesCustomer[];
+}> => {
+  return fetchApi("/utang/who-owes", "GET");
+};
+
+export const getCustomerBalance = async (
+  customerId: number
+): Promise<{ message: string; data: CustomerBalance }> => {
+  return fetchApi(`/utang/customers/${customerId}/balance`, "GET");
+};
+
+export const listPayments = async (filters?: {
+  customer_id?: number;
+  from?: string;
+  to?: string;
+}): Promise<{ message: string; data: UtangPayment[] }> => {
+  const query = new URLSearchParams();
+  if (filters?.customer_id)
+    query.append("customer_id", filters.customer_id.toString());
+  if (filters?.from) query.append("from", filters.from);
+  if (filters?.to) query.append("to", filters.to);
+  const endpoint = `/payments${query.toString() ? `?${query.toString()}` : ""}`;
+  return fetchApi(endpoint, "GET");
+};
+
+export const recordPayment = async (
+  payment: CreatePaymentInput
+): Promise<{ message: string; data: CreatedPaymentResult }> => {
+  return fetchApi("/payments", "POST", payment);
+};
+
+export const voidPayment = async (
+  id: number
+): Promise<{ message: string; data: MutationResult }> => {
+  return fetchApi(`/payments/${id}/void`, "POST");
+};
+
+// --- Cash Session API Calls ---
+export interface CashSession {
+  cash_session_id: number;
+  opened_by: number | null;
+  closed_by?: number | null;
+  opened_at: string;
+  closed_at?: string | null;
+  opening_cash: number;
+  expected_cash?: number | null;
+  actual_cash?: number | null;
+  difference?: number | null;
+  status: "open" | "closed";
+}
+
+export interface OpenCashSessionResult {
+  cash_session_id: number;
+}
+
+export const getOpenCashSession = async (): Promise<{
+  message: string;
+  data: CashSession | null;
+}> => {
+  return fetchApi("/cash-sessions/open", "GET");
+};
+
+export const listCashSessions = async (status?: "open" | "closed"): Promise<{
+  message: string;
+  data: CashSession[];
+}> => {
+  const endpoint = status ? `/cash-sessions?status=${status}` : "/cash-sessions";
+  return fetchApi(endpoint, "GET");
+};
+
+export const openCashSession = async (
+  opening_cash: number
+): Promise<{ message: string; data: OpenCashSessionResult }> => {
+  return fetchApi("/cash-sessions/open", "POST", { opening_cash });
+};
+
+export const closeCashSession = async (
+  id: number,
+  payload: { expected_cash: number; actual_cash: number }
+): Promise<{ message: string; data: MutationResult }> => {
+  return fetchApi(`/cash-sessions/${id}/close`, "POST", payload);
+};
+
+// --- Stock Movement API Calls ---
+export type StockMovementReason =
+  | "sale"
+  | "stock_in"
+  | "return"
+  | "damage"
+  | "expired"
+  | "owner_use"
+  | "correction";
+
+export interface StockMovement {
+  movement_id: number;
+  product_id: number;
+  quantity_delta: number;
+  reason: StockMovementReason;
+  source_type: string | null;
+  source_id: number | null;
+  note: string | null;
+  created_by: number | null;
+  created_at: string;
+  client_mutation_id: string | null;
+}
+
+export interface CreateStockMovementInput {
+  product_id: number;
+  quantity_delta: number;
+  reason: StockMovementReason;
+  source_type?: string | null;
+  source_id?: number | null;
+  note?: string | null;
+  client_mutation_id?: string;
+}
+
+export interface CreatedStockMovementResult {
+  movement_id: number;
+}
+
+export const createStockMovement = async (
+  movement: CreateStockMovementInput
+): Promise<{ message: string; data: CreatedStockMovementResult }> => {
+  return fetchApi("/stock-movements", "POST", movement);
+};
+
+export const listStockMovements = async (filters?: {
+  product_id?: number;
+  from?: string;
+  to?: string;
+}): Promise<{ message: string; data: StockMovement[] }> => {
+  const query = new URLSearchParams();
+  if (filters?.product_id)
+    query.append("product_id", filters.product_id.toString());
+  if (filters?.from) query.append("from", filters.from);
+  if (filters?.to) query.append("to", filters.to);
+  const endpoint = `/stock-movements${
+    query.toString() ? `?${query.toString()}` : ""
+  }`;
   return fetchApi(endpoint, "GET");
 };

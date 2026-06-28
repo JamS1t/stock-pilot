@@ -3,6 +3,15 @@ import { Product, Category, getProductById } from "../utils/api"; // Import Prod
 import { PlusCircleIcon, EditIcon, TrashIcon } from "./icons";
 import { useFormatters } from "@/format";
 
+export type InventorySortKey =
+  | "name"
+  | "category"
+  | "sku"
+  | "barcode"
+  | "selling_price"
+  | "stock"
+  | "stock_status";
+
 interface InventoryTableProps {
   products: Product[];
   categories: Category[];
@@ -11,25 +20,24 @@ interface InventoryTableProps {
   onEdit?: (product: Product) => void;
   onDelete?: (productId: number) => void;
   cartItems?: { product_id: number; quantity: number }[]; // New prop for cart state
+  sortKey?: InventorySortKey;
+  sortDirection?: "asc" | "desc";
+  onSort?: (key: InventorySortKey) => void;
 }
 
 const StockStatusBadge: React.FC<{ stock: number }> = ({ stock }) => {
-  let bgColor = "bg-green-500/20 text-green-400";
-  let text = "In Stock";
+  let pillClass = "pill-ok";
+  let text = "In stock";
 
   if (stock <= 10 && stock > 0) {
-    bgColor = "bg-yellow-500/20 text-yellow-400";
-    text = "Low Stock";
+    pillClass = "pill-warn";
+    text = "Paubos na";
   } else if (stock === 0) {
-    bgColor = "bg-red-500/20 text-red-400";
-    text = "Out of Stock";
+    pillClass = "pill-bad";
+    text = "Out of stock";
   }
 
-  return (
-    <span className={`px-2 py-1 text-xs font-medium rounded-full ${bgColor}`}>
-      {text}
-    </span>
-  );
+  return <span className={`pill ${pillClass}`}>{text}</span>;
 };
 
 const InventoryTable: React.FC<InventoryTableProps> = ({
@@ -40,6 +48,9 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
   onEdit,
   onDelete,
   cartItems = [],
+  sortKey,
+  sortDirection = "asc",
+  onSort,
 }) => {
   const getCategoryName = (categoryId: number) => {
     return (
@@ -49,70 +60,96 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
 
   const { formatCurrency } = useFormatters();
 
+  const renderSortHeader = (
+    key: InventorySortKey,
+    label: string,
+    className = ""
+  ) => {
+    const isActive = sortKey === key;
+    return (
+      <th
+        scope="col"
+        className={className}
+        aria-sort={
+          isActive
+            ? sortDirection === "asc"
+              ? "ascending"
+              : "descending"
+            : "none"
+        }
+      >
+        <button
+          type="button"
+          onClick={() => onSort?.(key)}
+          className={`flex w-full items-center gap-1 text-left ${
+            className.includes("text-right")
+              ? "justify-end"
+              : className.includes("text-center")
+              ? "justify-center"
+              : ""
+          }`}
+        >
+          <span>{label}</span>
+          <span className="text-[0.65rem] text-faint">
+            {isActive ? (sortDirection === "asc" ? "^" : "v") : ""}
+          </span>
+        </button>
+      </th>
+    );
+  };
+
   return (
-    <div className="flex-1 overflow-auto relative">
-      <table className="w-full text-sm text-left text-gray-400">
-        <thead className="text-xs text-gray-300 uppercase bg-gray-800 sticky top-0 z-10">
+    <div className="relative flex-1 overflow-auto">
+      <table className="data-table">
+        <thead className="sticky top-0 z-10">
           <tr>
-            <th
-              scope="col"
-              className="sticky left-0 px-4 py-3 bg-gray-800 min-w-[250px]"
-            >
-              Product
-            </th>
-            <th scope="col" className="px-4 py-3 min-w-[150px]">
-              Category
-            </th>
-            <th scope="col" className="px-4 py-3 min-w-[150px]">
-              SKU
-            </th>
-            <th scope="col" className="px-4 py-3 min-w-[150px]">
-              Barcode
-            </th>
-            <th scope="col" className="px-4 py-3 text-right min-w-[100px]">
-              Price
-            </th>
-            <th scope="col" className="px-4 py-3 text-center min-w-[100px]">
-              Stock
-            </th>
-            <th scope="col" className="px-4 py-3 text-center min-w-[120px]">
-              Status
-            </th>
-            <th scope="col" className="px-4 py-3 text-center min-w-[120px]">
+            {renderSortHeader(
+              "name",
+              "Produkto",
+              "sticky left-0 z-10 min-w-[250px] bg-sunken"
+            )}
+            {renderSortHeader("category", "Category", "min-w-[150px]")}
+            {renderSortHeader("sku", "SKU", "min-w-[150px]")}
+            {renderSortHeader("barcode", "Barcode", "min-w-[150px]")}
+            {renderSortHeader("selling_price", "Price", "min-w-[100px] text-right")}
+            {renderSortHeader("stock", "Stock", "min-w-[100px] text-center")}
+            {renderSortHeader("stock_status", "Status", "min-w-[120px] text-center")}
+            <th scope="col" className="min-w-[120px] text-center">
               Action
             </th>
           </tr>
         </thead>
         <tbody>
           {products.map((product) => (
-            <tr
-              key={product.product_id}
-              className="border-b border-gray-700 hover:bg-gray-700/50 group"
-            >
-              <td className="sticky left-0 px-4 py-3 font-medium text-white whitespace-nowrap bg-gray-800 group-hover:bg-gray-700/50">
+            <tr key={product.product_id} className="group">
+              <td className="sticky left-0 whitespace-nowrap bg-surface font-semibold text-ink group-hover:bg-sunken">
                 {product.name}
               </td>
-              <td className="px-4 py-3 whitespace-nowrap">
+              <td className="whitespace-nowrap text-muted">
                 {getCategoryName(product.category_id)}
               </td>
-              <td className="px-4 py-3 whitespace-nowrap font-mono text-xs">
-                {product.sku || "-----"}
+              <td className="whitespace-nowrap font-mono text-xs text-muted">
+                {product.sku || "—"}
               </td>
-              <td className="px-4 py-3 whitespace-nowrap font-mono text-xs">
-                {product.barcode || "-----"}
+              <td className="whitespace-nowrap font-mono text-xs text-muted">
+                {product.barcode || "—"}
               </td>
-              <td className="px-4 py-3 text-right whitespace-nowrap">
-                {isNaN(product.selling_price)
-                  ? "Invalid Price"
-                  : formatCurrency(product.selling_price)}
+              <td className="whitespace-nowrap text-right">
+                {isNaN(product.selling_price) ? (
+                  <span className="text-danger">Invalid price</span>
+                ) : (
+                  <span className="money font-semibold text-peso">
+                    {formatCurrency(product.selling_price)}
+                  </span>
+                )}
               </td>
-              <td className="px-4 py-3 text-center whitespace-nowrap">
-                {product.stock}
+              <td className="whitespace-nowrap text-center">
+                <span className="money font-semibold">{product.stock}</span>
               </td>
-              <td className="px-4 py-3 text-center whitespace-nowrap">
+              <td className="whitespace-nowrap text-center">
                 <StockStatusBadge stock={product.stock} />
               </td>
-              <td className="px-4 py-3 text-center whitespace-nowrap">
+              <td className="whitespace-nowrap text-center">
                 {mode === "pos" && onAddToCart && (
                   <button
                     onClick={() => onAddToCart(product)}
@@ -120,14 +157,14 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
                       product.stock === 0 ||
                       (cartItems.find((item) => item.product_id === product.product_id)?.quantity || 0) >= product.stock
                     }
-                    className="p-2 text-sky-400 rounded-full hover:bg-sky-400/10 disabled:text-gray-600 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors duration-200"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-peso transition-colors hover:bg-peso-tint disabled:cursor-not-allowed disabled:text-faint disabled:hover:bg-transparent"
                     aria-label="Add to cart"
                   >
                     <PlusCircleIcon />
                   </button>
                 )}
                 {mode === "management" && (
-                  <div className="flex items-center justify-center space-x-2">
+                  <div className="flex items-center justify-center gap-1">
                     <button
                       onClick={async () => {
                         try {
@@ -139,7 +176,7 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
                           // Handle error
                         }
                       }}
-                      className="p-2 text-yellow-400 rounded-full hover:bg-yellow-400/10 transition-colors duration-200"
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-muted transition-colors hover:bg-sunken hover:text-ink"
                       aria-label="Edit product"
                     >
                       <EditIcon />
@@ -147,7 +184,7 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
 
                     <button
                       onClick={() => onDelete?.(product.product_id)}
-                      className="p-2 text-red-400 rounded-full hover:bg-red-400/10 transition-colors duration-200"
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-danger transition-colors hover:bg-danger-tint"
                       aria-label="Delete product"
                     >
                       <TrashIcon />

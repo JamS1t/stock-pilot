@@ -23,6 +23,8 @@ const PosPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [orderForReceipt, setOrderForReceipt] = useState<number | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const lastAutoAddedBarcode = useRef<string | null>(null);
 
   // Debounce search and filter
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -110,7 +112,23 @@ const PosPage: React.FC = () => {
         },
       ];
     });
+    requestAnimationFrame(() => searchInputRef.current?.focus());
   };
+
+  useEffect(() => {
+    const term = debouncedSearchTerm.trim();
+    if (!term || lastAutoAddedBarcode.current === term) return;
+
+    const exactBarcodeMatch = products.find(
+      (product) => String(product.barcode || "").trim() === term
+    );
+
+    if (!exactBarcodeMatch) return;
+
+    lastAutoAddedBarcode.current = term;
+    handleAddToCart(exactBarcodeMatch);
+    setSearchTerm("");
+  }, [debouncedSearchTerm, products]);
 
   const handleUpdateQuantity = (productId: number, quantity: number) => {
     setCart((prevCart) =>
@@ -190,81 +208,107 @@ const PosPage: React.FC = () => {
    * ===================== */
   if (loading && products.length === 0) {
     return (
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
-        <p className="ml-3 text-sky-400">Loading POS data...</p>
+      <main className="page flex items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-peso"></div>
+        <p className="ml-3 text-muted">Loading counter…</p>
       </main>
     );
   }
 
   if (error) {
     return (
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 flex items-center justify-center text-red-400">
-        <p>Error: {error}</p>
-        <button
-          onClick={fetchPosData}
-          className="ml-4 px-4 py-2 bg-sky-600 text-white rounded-md"
-        >
-          Retry
-        </button>
+      <main className="page flex items-center justify-center">
+        <div className="card flex flex-col items-center gap-3 p-6 text-center">
+          <p className="text-sm font-semibold text-danger">
+            Couldn't load the counter
+          </p>
+          <p className="text-xs text-muted">{error}</p>
+          <button
+            type="button"
+            onClick={fetchPosData}
+            className="btn btn-primary"
+          >
+            Try again
+          </button>
+        </div>
       </main>
     );
   }
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 flex flex-col min-w-0">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-white tracking-tight">
-            Point of Sale
-          </h1>
-          <p className="text-gray-400">
-            Create a new order by adding products from the list.
-          </p>
-        </header>
+      <main className="page flex min-w-0 flex-col">
+        <div className="page-inner flex flex-1 flex-col">
+          <header className="mb-6 pl-12 lg:pl-0">
+            <p className="eyebrow">Benta</p>
+            <h1 className="page-title mt-1">Legacy POS</h1>
+            <p className="mt-1 text-sm text-muted">
+              Add products to start a sale.
+            </p>
+          </header>
 
-        <div className="bg-gray-800 p-6 rounded-xl shadow-lg flex-1 flex flex-col overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
-            />
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
-            >
-              <option value="">All Categories</option>
-              {categories.map((c) => (
-                <option key={c.category_id} value={c.category_id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex-1 overflow-hidden relative">
-            {loading && (
-              <div className="absolute inset-0 bg-gray-800/50 backdrop-blur-sm flex items-center justify-center z-20">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500"></div>
-              </div>
-            )}
-            {products.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                No products found.
-              </div>
-            ) : (
-              <InventoryTable
-                products={products}
-                categories={categories}
-                mode="pos"
-                onAddToCart={handleAddToCart}
-                cartItems={cart}
+          <div className="card flex flex-1 flex-col overflow-hidden p-4 lg:p-5">
+            <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <input
+                ref={searchInputRef}
+                type="search"
+                placeholder="Search name, SKU, or barcode"
+                value={searchTerm}
+                onChange={(e) => {
+                  lastAutoAddedBarcode.current = null;
+                  setSearchTerm(e.target.value);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" || products.length === 0) return;
+                  event.preventDefault();
+                  const term = searchTerm.trim();
+                  const exactBarcodeMatch = products.find(
+                    (product) => String(product.barcode || "").trim() === term
+                  );
+                  handleAddToCart(exactBarcodeMatch || products[0]);
+                  setSearchTerm("");
+                }}
+                className="field min-h-12"
               />
-            )}
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="field min-h-12"
+              >
+                <option value="">All categories</option>
+                {categories.map((c) => (
+                  <option key={c.category_id} value={c.category_id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="relative flex-1 overflow-hidden">
+              {loading && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-surface/60 backdrop-blur-sm">
+                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-peso"></div>
+                </div>
+              )}
+              {products.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
+                  <p className="text-sm font-semibold text-muted">
+                    No products found
+                  </p>
+                  <p className="text-xs text-faint">
+                    Try another search, or add stock in Inventory.
+                  </p>
+                </div>
+              ) : (
+                <InventoryTable
+                  products={products}
+                  categories={categories}
+                  mode="pos"
+                  onAddToCart={handleAddToCart}
+                  cartItems={cart}
+                />
+              )}
+            </div>
           </div>
         </div>
       </main>

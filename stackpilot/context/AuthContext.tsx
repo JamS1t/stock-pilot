@@ -11,7 +11,8 @@ interface User {
 
 interface Store {
   store_id: number;
-  store_name: string;
+  name?: string;
+  store_name?: string;
   timezone: string;
   currency: string;
 }

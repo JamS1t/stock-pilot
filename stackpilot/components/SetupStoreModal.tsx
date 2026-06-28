@@ -45,22 +45,22 @@ const SetupStoreModal: React.FC<SetupStoreModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 font-sans">
-      <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700 w-full max-w-md space-y-6">
-        <h2 className="text-2xl font-bold text-white text-center">
-          Set Up Your Store
-        </h2>
-        <p className="text-gray-400 text-center">
-          Welcome! Please provide some details for your new store.
-        </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 font-sans backdrop-blur-sm">
+      <div className="card w-full max-w-md animate-fade-in p-6 shadow-pop">
+        <div className="text-center">
+          <p className="eyebrow">Welcome sa StockPilot</p>
+          <h2 className="mt-1 font-display text-2xl font-bold text-ink">
+            Set up your store
+          </h2>
+          <p className="mt-2 text-sm text-muted">
+            A few details to get your counter ready. You can change these later.
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
-            <label
-              htmlFor="storeName"
-              className="block text-sm font-medium text-gray-300"
-            >
-              Store Name
+            <label htmlFor="storeName" className="field-label">
+              Store name
             </label>
             <input
               id="storeName"
@@ -68,23 +68,20 @@ const SetupStoreModal: React.FC<SetupStoreModalProps> = ({
               required
               value={storeName}
               onChange={(e) => setStoreName(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
-              placeholder="e.g., My Awesome Shop"
+              className="field"
+              placeholder="e.g., Aling Nena Store"
             />
           </div>
 
           <div>
-            <label
-              htmlFor="timezone"
-              className="block text-sm font-medium text-gray-300"
-            >
+            <label htmlFor="timezone" className="field-label">
               Timezone
             </label>
             <select
               id="timezone"
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+              className="field"
             >
               <option value="Asia/Manila">Asia/Manila (PHT)</option>
               <option value="UTC">UTC</option>
@@ -97,17 +94,14 @@ const SetupStoreModal: React.FC<SetupStoreModalProps> = ({
           </div>
 
           <div>
-            <label
-              htmlFor="currency"
-              className="block text-sm font-medium text-gray-300"
-            >
+            <label htmlFor="currency" className="field-label">
               Currency
             </label>
             <select
               id="currency"
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+              className="field"
             >
               <option value="PHP">PHP (₱)</option>
               <option value="USD">USD ($)</option>
@@ -118,30 +112,36 @@ const SetupStoreModal: React.FC<SetupStoreModalProps> = ({
             </select>
           </div>
 
-          {error && <p className="text-sm text-red-400 text-center">{error}</p>}
+          {error && (
+            <div className="rounded-xl border border-danger/30 bg-danger-tint px-3.5 py-3 text-center text-sm text-danger">
+              {error}
+            </div>
+          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <div className="flex items-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                <span className="ml-2">Setting up...</span>
-              </div>
-            ) : (
-              "Set Up Store"
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-gray-500 transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Cancel
-          </button>
+          <div className="flex flex-col gap-2 pt-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary btn-lg w-full"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-5 w-5 animate-spin rounded-full border-b-2 border-white"></span>
+                  Setting up…
+                </span>
+              ) : (
+                "Set up store"
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="btn btn-ghost w-full"
+            >
+              Cancel
+            </button>
+          </div>
         </form>
       </div>
     </div>

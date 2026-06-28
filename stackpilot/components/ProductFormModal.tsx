@@ -81,13 +81,36 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
       return;
     }
 
-    if (!formData.unit_price || isNaN(Number(formData.unit_price))) {
+    if (
+      formData.unit_price === "" ||
+      isNaN(Number(formData.unit_price)) ||
+      Number(formData.unit_price) < 0
+    ) {
       setError("Unit price must be a valid number.");
       return;
     }
 
-    if (!formData.selling_price || isNaN(Number(formData.selling_price))) {
-      setError("Selling price must be a valid number.");
+    if (
+      formData.selling_price === "" ||
+      isNaN(Number(formData.selling_price)) ||
+      Number(formData.selling_price) <= 0
+    ) {
+      setError("Selling price must be greater than zero.");
+      return;
+    }
+
+    if (
+      formData.stock === "" ||
+      isNaN(Number(formData.stock)) ||
+      Number(formData.stock) < 0 ||
+      !Number.isInteger(Number(formData.stock))
+    ) {
+      setError("Stock quantity must be a whole number of zero or more.");
+      return;
+    }
+
+    if (!formData.category_id) {
+      setError("Category is required.");
       return;
     }
 
@@ -100,16 +123,16 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
     try {
       const productPayload = {
-        name: formData.name,
-        sku: formData.sku || null,
+        name: formData.name.trim(),
+        sku: formData.sku.trim() || null,
         unit_price: parseFloat(formData.unit_price),
         selling_price: parseFloat(formData.selling_price),
-        stock: parseInt(formData.stock) || 0,
-        category_id: parseInt(formData.category_id),
+        stock: parseInt(formData.stock, 10),
+        category_id: parseInt(formData.category_id, 10),
         supplier_id: formData.supplier_id
-          ? parseInt(formData.supplier_id)
+          ? parseInt(formData.supplier_id, 10)
           : null,
-        barcode: formData.barcode || null,
+        barcode: formData.barcode.trim() || null,
       };
 
       if (product) {
@@ -130,25 +153,22 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
-        className="bg-gray-800 rounded-xl shadow-2xl p-8 w-full max-w-2xl border border-gray-700"
+        className="card w-full max-w-2xl p-6 shadow-pop animate-fade-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-2xl font-bold text-white mb-6">
-          {product ? "Edit Product" : "Add New Product"}
+        <h2 className="font-display text-xl font-bold text-ink mb-5">
+          {product ? "Edit product" : "Add new product"}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Product Name */}
           <div>
-            <label
-              htmlFor="name"
-              className="block text-sm font-medium text-gray-400 mb-1"
-            >
-              Product Name
+            <label htmlFor="name" className="field-label">
+              Product name
             </label>
             <input
               type="text"
@@ -157,19 +177,16 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
               value={formData.name}
               onChange={handleChange}
               disabled={loading}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
+              className="field"
               required
             />
           </div>
 
-          {/* SKU & Stock Quantity */}
+          {/* SKU & Barcode */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label
-                htmlFor="sku"
-                className="block text-sm font-medium text-gray-400 mb-1"
-              >
-                SKU (Optional)
+              <label htmlFor="sku" className="field-label">
+                SKU (optional)
               </label>
               <input
                 type="text"
@@ -178,38 +195,52 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 value={formData.sku}
                 onChange={handleChange}
                 disabled={loading}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                className="field"
               />
             </div>
 
             <div>
-              <label
-                htmlFor="stock"
-                className="block text-sm font-medium text-gray-400 mb-1"
-              >
-                Stock Quantity
+              <label htmlFor="barcode" className="field-label">
+                Barcode (optional)
               </label>
               <input
-                type="number"
-                id="stock"
-                name="stock"
-                value={formData.stock}
+                type="text"
+                id="barcode"
+                name="barcode"
+                value={formData.barcode}
                 onChange={handleChange}
                 disabled={loading}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                required
+                className="field font-mono"
+                inputMode="numeric"
+                autoComplete="off"
               />
             </div>
+          </div>
+
+          {/* Stock Quantity */}
+          <div>
+            <label htmlFor="stock" className="field-label">
+              Stock quantity
+            </label>
+            <input
+              type="number"
+              id="stock"
+              name="stock"
+              value={formData.stock}
+              onChange={handleChange}
+              disabled={loading}
+              className="field"
+              min="0"
+              step="1"
+              required
+            />
           </div>
 
           {/* Prices */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label
-                htmlFor="unit_price"
-                className="block text-sm font-medium text-gray-400 mb-1"
-              >
-                Unit Price
+              <label htmlFor="unit_price" className="field-label">
+                Unit price (puhunan)
               </label>
               <input
                 type="number"
@@ -218,16 +249,15 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 value={formData.unit_price}
                 onChange={handleChange}
                 disabled={loading}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                className="field"
+                min="0"
+                step="0.01"
                 required
               />
             </div>
             <div>
-              <label
-                htmlFor="selling_price"
-                className="block text-sm font-medium text-gray-400 mb-1"
-              >
-                Selling Price
+              <label htmlFor="selling_price" className="field-label">
+                Selling price (benta)
               </label>
               <input
                 type="number"
@@ -236,7 +266,9 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 value={formData.selling_price}
                 onChange={handleChange}
                 disabled={loading}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                className="field"
+                min="0.01"
+                step="0.01"
                 required
               />
             </div>
@@ -245,10 +277,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
           {/* Category & Supplier */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label
-                htmlFor="category_id"
-                className="block text-sm font-medium text-gray-400 mb-1"
-              >
+              <label htmlFor="category_id" className="field-label">
                 Category
               </label>
               <select
@@ -258,9 +287,9 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 onChange={handleChange}
                 disabled={loading}
                 required
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                className="field"
               >
-                <option value="">Select Category</option>
+                <option value="">Select category</option>
                 {categories.map((cat) => (
                   <option key={cat.category_id} value={cat.category_id}>
                     {cat.name}
@@ -270,11 +299,8 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </div>
 
             <div>
-              <label
-                htmlFor="supplier_id"
-                className="block text-sm font-medium text-gray-400 mb-1"
-              >
-                Supplier (Optional)
+              <label htmlFor="supplier_id" className="field-label">
+                Supplier (optional)
               </label>
               <select
                 id="supplier_id"
@@ -282,9 +308,9 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 value={formData.supplier_id}
                 onChange={handleChange}
                 disabled={loading}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                className="field"
               >
-                <option value="">Select Supplier</option>
+                <option value="">Select supplier</option>
                 {suppliers.map((sup) => (
                   <option key={sup.supplier_id} value={sup.supplier_id}>
                     {sup.name}
@@ -295,30 +321,30 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
           </div>
 
           {/* Error */}
-          {error && <p className="text-sm text-red-400 text-center">{error}</p>}
+          {error && (
+            <div className="rounded-xl border border-danger/30 bg-danger-tint px-3.5 py-3 text-sm text-danger">
+              {error}
+            </div>
+          )}
 
           {/* Buttons */}
-          <div className="pt-4 flex justify-end space-x-3">
+          <div className="pt-2 flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors"
+              className="btn btn-ghost"
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-sky-500 text-white font-semibold rounded-lg hover:bg-sky-600 transition-colors"
-            >
+            <button type="submit" disabled={loading} className="btn btn-primary">
               {loading ? (
                 <div className="flex items-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span className="ml-2">Saving...</span>
+                  <span className="ml-2">Saving…</span>
                 </div>
               ) : (
-                "Save Product"
+                "Save product"
               )}
             </button>
           </div>

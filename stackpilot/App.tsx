@@ -1,22 +1,30 @@
-import React, { useState } from "react";
+import React, { Suspense, lazy, useState } from "react";
 import Sidebar from "./components/Sidebar";
-import PosPage from "./pages/PosPage";
-import InventoryPage from "./pages/InventoryPage";
-import ReportsPage from "./pages/ReportsPage";
-import CategoriesPage from "./pages/CategoriesPage";
-import SuppliersPage from "./pages/SuppliersPage";
-import OrderHistoryPage from "./pages/OrderHistoryPage";
-import AdminSettingsPage from "./pages/AdminSettingsPage";
+import CounterDashboard from "./pages/CounterDashboard";
 import LoginPage from "./pages/LoginPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 // Remove dummy data imports and types that are now fetched within pages
 // import { Product, Category, Supplier, Order, OrderItem } from "./types";
 // import { PRODUCTS, CATEGORIES, SUPPLIERS, ORDERS } from "./constants";
 
+const PosPage = lazy(() => import("./pages/PosPage"));
+const InventoryPage = lazy(() => import("./pages/InventoryPage"));
+const ReportsPage = lazy(() => import("./pages/ReportsPage"));
+const CategoriesPage = lazy(() => import("./pages/CategoriesPage"));
+const SuppliersPage = lazy(() => import("./pages/SuppliersPage"));
+const OrderHistoryPage = lazy(() => import("./pages/OrderHistoryPage"));
+const AdminSettingsPage = lazy(() => import("./pages/AdminSettingsPage"));
+
+const PageFallback: React.FC = () => (
+  <main className="flex flex-1 items-center justify-center bg-paper">
+    <div className="h-9 w-9 animate-spin rounded-full border-2 border-line border-t-peso" />
+  </main>
+);
+
 // Main App component wrapped with AuthProvider
 const AppContent: React.FC = () => {
-  const { isAuthenticated, logout } = useAuth(); // Use auth context
-  const [activePage, setActivePage] = useState("pos");
+  const { isAuthenticated } = useAuth(); // Use auth context
+  const [activePage, setActivePage] = useState("counter");
 
   // Data state is now managed within individual page components or context
   // const [products, setProducts] = useState<Product[]>(PRODUCTS);
@@ -30,7 +38,9 @@ const AppContent: React.FC = () => {
 
   const renderActivePage = () => {
     switch (activePage) {
-      case "pos":
+      case "counter":
+        return <CounterDashboard setActivePage={setActivePage} />;
+      case "legacy_pos":
         return <PosPage />; // No props needed
       case "inventory":
         return <InventoryPage />; // No props needed
@@ -45,7 +55,7 @@ const AppContent: React.FC = () => {
       case "settings":
         return <AdminSettingsPage />;
       default:
-        return <PosPage />; // No props needed
+        return <CounterDashboard setActivePage={setActivePage} />;
     }
   };
 
@@ -54,13 +64,9 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white font-sans overflow-hidden">
-      <Sidebar
-        activePage={activePage}
-        setActivePage={setActivePage}
-        // onLogout prop is no longer needed
-      />
-      {renderActivePage()}
+    <div className="flex h-screen overflow-hidden bg-paper text-ink">
+      <Sidebar activePage={activePage} setActivePage={setActivePage} />
+      <Suspense fallback={<PageFallback />}>{renderActivePage()}</Suspense>
     </div>
   );
 };

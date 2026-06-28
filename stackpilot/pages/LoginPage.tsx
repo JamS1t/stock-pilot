@@ -12,6 +12,13 @@ interface StoreSetupData {
   currency: string;
 }
 
+const valueProps: { taglish: string; en: string }[] = [
+  { taglish: 'Benta', en: 'Every sale counted, cash or GCash' },
+  { taglish: 'Utang', en: 'Suki balances that never get forgotten' },
+  { taglish: 'Stock', en: 'Know what is paubos before it runs out' },
+  { taglish: 'Kita', en: 'Daily close with your real profit' },
+];
+
 const LoginPage: React.FC = () => {
   const { login: authContextLogin } = useAuth();
   const googleButtonRef = useRef<HTMLDivElement>(null);
@@ -24,31 +31,29 @@ const LoginPage: React.FC = () => {
     if (google && googleButtonRef.current && !loading && !showSetupStoreModal) {
       try {
         google.accounts.id.initialize({
-          client_id: "714854418773-o6gkkqgrnf04nosj4m38qc9v4j5thq69.apps.googleusercontent.com",
+          client_id:
+            '714854418773-o6gkkqgrnf04nosj4m38qc9v4j5thq69.apps.googleusercontent.com',
           callback: handleCredentialResponse,
         });
 
-        google.accounts.id.renderButton(
-          googleButtonRef.current,
-          { 
-            theme: 'filled_black',
-            size: 'large', 
-            text: 'signin_with',
-            shape: 'pill',
-            width: '280'
-          }
-        );
+        google.accounts.id.renderButton(googleButtonRef.current, {
+          theme: 'outline',
+          size: 'large',
+          text: 'continue_with',
+          shape: 'pill',
+          width: '300',
+        });
 
         google.accounts.id.prompt();
       } catch (err) {
-        // console.error('Error initializing Google Sign-In:', err);
+        // Google SDK not ready yet — the button simply won't render.
       }
     }
   }, [showSetupStoreModal, loading]);
 
   const handleCredentialResponse = async (response: any) => {
     if (!response.credential) {
-      setError('No credential received from Google');
+      setError('We did not receive a Google sign-in. Please try again.');
       return;
     }
 
@@ -65,7 +70,7 @@ const LoginPage: React.FC = () => {
         authContextLogin(data);
       }
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.');
+      setError(err.message || 'Sign-in failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -82,7 +87,7 @@ const LoginPage: React.FC = () => {
         storeSetupData.timezone,
         storeSetupData.currency
       );
-      
+
       setShowSetupStoreModal(false);
       authContextLogin(response);
     } catch (err: any) {
@@ -97,95 +102,100 @@ const LoginPage: React.FC = () => {
   const handleCloseSetupStoreModal = () => {
     setShowSetupStoreModal(false);
     setNewUserData(null);
-    setError('Store setup was cancelled. Please sign in again to continue.');
+    setError('Store setup was cancelled. Sign in again to continue.');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-20 w-72 h-72 bg-sky-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-700"></div>
-      </div>
+    <div className="flex min-h-screen flex-col bg-paper lg:flex-row">
+      {/* Brand / value panel */}
+      <section className="on-ink relative flex flex-col justify-between overflow-hidden bg-ink px-8 py-10 text-white lg:w-[46%] lg:px-14 lg:py-14">
+        {/* ambient jade glow, subtle */}
+        <div className="pointer-events-none absolute -left-24 top-1/3 h-80 w-80 rounded-full bg-rail-active/10 blur-3xl" />
+        <div className="pointer-events-none absolute -right-16 bottom-0 h-72 w-72 rounded-full bg-peso/10 blur-3xl" />
 
-      <div className="w-full max-w-md relative z-10">
-        <div className="backdrop-blur-xl bg-gray-900/80 rounded-3xl shadow-2xl border border-gray-800/50 p-8 sm:p-10 space-y-8 transform transition-all hover:shadow-sky-500/10 hover:shadow-3xl">
-          {/* Logo and Header */}
-          <div className="text-center space-y-4">
-            <div className="flex justify-center mb-6">
-              <div className="relative">
-                <div className="absolute inset-0 bg-sky-500/20 blur-xl rounded-full animate-pulse"></div>
-                <img 
-                  src="/stockpilot-logo.png" 
-                  alt="StockPilot Logo" 
-                  className="w-14 h-14 relative z-10 drop-shadow-2xl"
-                />
-              </div>
+        <div className="relative z-10 flex items-center gap-3">
+          <img src="/stockpilot-logo.png" alt="" width={40} height={40} />
+          <div className="leading-tight">
+            <div className="font-display text-xl font-bold tracking-tight">StockPilot</div>
+            <div className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-rail-active">
+              Counter&nbsp;AI
             </div>
-            
-            <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight">
-              Stock<span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">Pilot</span>
-            </h1>
-            
-            <p className="text-gray-500 text-xs tracking-wide">By JC Studio</p>
-            
-            <div className="pt-2">
-              <p className="text-gray-400 text-sm font-light">Welcome back</p>
-              <p className="text-gray-500 text-xs mt-1">Sign in to continue to your dashboard</p>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="space-y-6">
-            {loading && (
-              <div className="flex flex-col items-center justify-center py-6 space-y-3">
-                <div className="relative">
-                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-800"></div>
-                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-t-sky-500 absolute inset-0"></div>
-                </div>
-                <p className="text-sky-400 text-sm font-medium">Authenticating...</p>
-              </div>
-            )}
-            
-            {error && (
-              <div className="relative overflow-hidden rounded-xl p-4 bg-gradient-to-r from-red-500/10 to-red-600/10 border border-red-500/20 backdrop-blur-sm">
-                <div className="absolute inset-0 bg-red-500/5 animate-pulse"></div>
-                <p className="text-sm text-red-400 text-center relative z-10 font-medium">{error}</p>
-              </div>
-            )}
-            
-            {/* Google Button Container with custom styling */}
-            <div className={`flex flex-col items-center space-y-4 ${loading || showSetupStoreModal ? 'hidden' : ''}`}>
-              <div className="w-full flex justify-center">
-                <div 
-                  ref={googleButtonRef}
-                  className="google-btn-wrapper [&>div]:!rounded-full [&>div]:!border-gray-700 [&>div]:!shadow-lg [&>div]:hover:!shadow-sky-500/20 [&>div]:hover:!border-sky-500/50 [&>div]:transition-all [&>div]:duration-300 [&>div]:!bg-gray-800/50 [&>div]:backdrop-blur-sm"
-                />
-              </div>
-              
-              <div className="flex items-center gap-2 text-xs text-gray-600">
-                <div className="h-px w-12 bg-gradient-to-r from-transparent to-gray-700"></div>
-                <span>Secure authentication</span>
-                <div className="h-px w-12 bg-gradient-to-l from-transparent to-gray-700"></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="pt-6 border-t border-gray-800/50">
-            <p className="text-center text-xs text-gray-600">
-              By continuing, you agree to our Terms of Service and Privacy Policy
-            </p>
           </div>
         </div>
 
-        {/* Bottom accent */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-600">
-            Need help? <a href="#" className="text-sky-400 hover:text-sky-300 transition-colors">Contact Support</a>
+        <div className="relative z-10 my-12 max-w-md lg:my-0">
+          <p className="eyebrow text-rail-active">Para sa tindahan mo</p>
+          <h1 className="mt-3 font-display text-3xl font-bold leading-tight tracking-tight lg:text-[2.6rem]">
+            Bantay sa benta, stock, utang, at kita.
+          </h1>
+          <p className="mt-4 text-base leading-relaxed text-rail-text">
+            The offline-ready counter for serious small retailers. Sell faster, close
+            the day with your real numbers, and never lose track of who owes you.
+          </p>
+
+          <ul className="mt-8 space-y-3">
+            {valueProps.map((v) => (
+              <li key={v.taglish} className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-rail-active/20 text-rail-active">
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 10l4 4 8-9" />
+                  </svg>
+                </span>
+                <span className="text-sm text-rail-text">
+                  <span className="font-semibold text-white">{v.taglish}</span>
+                  <span className="text-rail-muted"> — {v.en}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="relative z-10 text-xs text-rail-muted">
+          Works even when the internet is bad. Your counter keeps running.
+        </p>
+      </section>
+
+      {/* Sign-in panel */}
+      <section className="flex flex-1 items-center justify-center px-6 py-12 sm:px-10">
+        <div className="w-full max-w-sm animate-fade-in">
+          <div className="card p-8">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-ink">
+              Sign in to your counter
+            </h2>
+            <p className="mt-1.5 text-sm text-muted">
+              Use your Google account to open the store.
+            </p>
+
+            <div className="mt-8 min-h-[120px]">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center gap-3 py-6">
+                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-line border-t-peso" />
+                  <p className="text-sm font-medium text-muted">Opening your counter…</p>
+                </div>
+              ) : (
+                <div className={showSetupStoreModal ? 'hidden' : 'flex flex-col items-center gap-5'}>
+                  <div ref={googleButtonRef} className="flex justify-center" />
+                  <div className="flex w-full items-center gap-3 text-xs text-faint">
+                    <span className="h-px flex-1 bg-line" />
+                    <span>Secure Google sign-in</span>
+                    <span className="h-px flex-1 bg-line" />
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="mt-5 rounded-xl border border-danger/30 bg-danger-tint px-4 py-3 text-sm text-danger">
+                  {error}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <p className="mt-6 text-center text-xs text-faint">
+            By continuing you agree to the Terms of Service and Privacy Policy.
           </p>
         </div>
-      </div>
+      </section>
 
       {showSetupStoreModal && newUserData && (
         <SetupStoreModal
@@ -194,21 +204,6 @@ const LoginPage: React.FC = () => {
           onClose={handleCloseSetupStoreModal}
         />
       )}
-
-      <style>{`
-        @keyframes delay-700 {
-          0%, 100% { opacity: 0.5; }
-          50% { opacity: 0.8; }
-        }
-        .delay-700 {
-          animation-delay: 700ms;
-        }
-        
-        /* Custom Google button styling */
-        .google-btn-wrapper > div {
-          transition: all 0.3s ease !important;
-        }
-      `}</style>
     </div>
   );
 };
