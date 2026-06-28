@@ -179,6 +179,26 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
     }));
   }, [salesReport]);
 
+  const reportInsights = useMemo(() => {
+    const peakRevenue = chartData.reduce(
+      (best, point) => (point.amount > best.amount ? point : best),
+      { date: "", amount: 0, profit: 0 }
+    );
+    const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+    const activeFilter =
+      productFilter !== ""
+        ? products.find((p) => p.product_id === Number(productFilter))?.name
+        : categoryFilter !== ""
+          ? categories.find((c) => c.category_id === Number(categoryFilter))?.name
+          : "All products";
+
+    return {
+      peakRevenue,
+      profitMargin,
+      activeFilter: activeFilter || "All products",
+    };
+  }, [categories, categoryFilter, chartData, productFilter, products, totalProfit, totalRevenue]);
+
   const getFilterTitle = () => {
     let title = "";
     if (productFilter !== "") {
@@ -235,8 +255,8 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
         </header>
 
         {/* Filters Bar */}
-        <div className="card flex flex-wrap items-center gap-3 p-4">
-          <div className="flex items-center gap-1 rounded-xl border border-line bg-sunken p-1">
+        <div className="card flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-sunken p-1 sm:flex sm:items-center">
             {(["today", "week", "month", "year"] as Timeframe[]).map((t) => (
               <button
                 key={t}
@@ -257,7 +277,7 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
               setCategoryFilter(e.target.value);
               setProductFilter("");
             }}
-            className="field field-sm w-auto"
+            className="field field-sm w-full sm:w-auto"
           >
             <option value="">All categories</option>
             {categories.map((c) => (
@@ -269,7 +289,7 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
           <select
             value={productFilter}
             onChange={(e) => setProductFilter(e.target.value)}
-            className="field field-sm w-auto"
+            className="field field-sm w-full sm:w-auto"
             disabled={categoryFilter === ""}
           >
             <option value="">All products in category</option>
@@ -295,30 +315,62 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
               icon={ChartBarIcon}
               title="Total revenue"
               value={formatCurrency(totalRevenue)}
-              change={`For selected period`}
-              changeType="increase"
+              change="Selected period"
+              changeType="neutral"
+              valueTone="money"
             />
             <DashboardCard
               icon={ChartBarIcon}
               title="Total profit"
               value={formatCurrency(totalProfit)}
-              change={`For selected period`}
-              changeType="increase"
+              change={totalRevenue > 0 ? `${reportInsights.profitMargin.toFixed(1)}% margin signal` : "No revenue yet"}
+              changeType={totalProfit > 0 ? "increase" : "neutral"}
+              valueTone="neutral"
             />
             <DashboardCard
               icon={ShoppingCartIcon}
               title="Total sales"
               value={totalSales.toLocaleString("en-US")}
-              change={`For selected period`}
-              changeType="increase"
+              change={`${timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} view`}
+              changeType="neutral"
             />
             <DashboardCard
               icon={PackageIcon}
               title="Items sold"
               value={totalItemsSold.toLocaleString("en-US")}
-              change={`For selected period`}
-              changeType="increase"
+              change={reportInsights.activeFilter}
+              changeType="neutral"
             />
+          </div>
+
+          <div className="card-sunken grid gap-3 p-4 md:grid-cols-3">
+            <div>
+              <p className="eyebrow">Peak benta</p>
+              <p className="money mt-1 text-lg font-bold text-ink">
+                {reportInsights.peakRevenue.amount > 0
+                  ? formatCurrency(reportInsights.peakRevenue.amount)
+                  : "No sales yet"}
+              </p>
+              {reportInsights.peakRevenue.date && (
+                <p className="mt-1 truncate text-xs text-muted">
+                  {reportInsights.peakRevenue.date}
+                </p>
+              )}
+            </div>
+            <div>
+              <p className="eyebrow">Kita signal</p>
+              <p className="money mt-1 text-lg font-bold text-ink">
+                {totalRevenue > 0 ? `${reportInsights.profitMargin.toFixed(1)}%` : "No signal"}
+              </p>
+              <p className="mt-1 text-xs text-muted">Based on available profit data</p>
+            </div>
+            <div>
+              <p className="eyebrow">Current view</p>
+              <p className="mt-1 truncate text-sm font-semibold text-ink">
+                {reportInsights.activeFilter}
+              </p>
+              <p className="mt-1 text-xs text-muted">Filter scope for this report</p>
+            </div>
           </div>
 
           <div className="card p-4 lg:p-5">

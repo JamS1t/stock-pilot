@@ -93,6 +93,9 @@
   .btn-lg {
     @apply min-h-14 text-base px-5;
   }
+  .btn-sm {
+    @apply min-h-9 px-3 text-xs;
+  }
   .btn-primary {
     @apply bg-peso text-white hover:bg-peso-deep
            disabled:bg-line-strong disabled:text-white;

@@ -131,11 +131,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage }) => {
         <button
           type="button"
           onClick={() => setCollapsed((v) => !v)}
-          className="absolute -right-3 top-9 hidden h-6 w-6 items-center justify-center rounded-full border border-line bg-surface text-muted shadow-card transition hover:text-peso lg:flex"
+          className="absolute -right-5 top-7 hidden h-11 w-11 items-center justify-center rounded-xl border border-line bg-surface text-muted shadow-card transition hover:text-peso lg:flex"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <svg
-            className={`h-3.5 w-3.5 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`}
+            className={`h-4 w-4 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
