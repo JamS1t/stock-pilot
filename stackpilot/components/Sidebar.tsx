@@ -60,6 +60,7 @@ const NavLink: React.FC<{
 
 const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage }) => {
   const { user, store, logout } = useAuth();
+  const storeName = store?.name || store?.store_name || "Store";
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [online, setOnline] = useState(
@@ -150,11 +151,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage }) => {
           <div className={`mb-2 px-3 ${collapsed ? 'flex justify-center px-0' : ''}`}>
             {collapsed ? (
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rail-active/20 font-display text-base font-bold text-rail-active">
-                {store.name.charAt(0).toUpperCase()}
+                {storeName.charAt(0).toUpperCase()}
               </div>
             ) : (
               <div className="rounded-xl bg-white/[0.04] px-3 py-2.5">
-                <div className="truncate text-sm font-semibold text-white">{store.name}</div>
+                <div className="truncate text-sm font-semibold text-white">{storeName}</div>
                 {user && (
                   <div className="truncate text-xs text-rail-muted">{user.name}</div>
                 )}

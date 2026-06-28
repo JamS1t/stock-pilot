@@ -19,8 +19,6 @@ export async function googleLoginHandler(req: Request, res: Response) {
       req.get("User-Agent") || ""
     );
 
-    console.log(result);
-
     // If new user, don’t issue tokens yet
     if (result.newUser) {
       return res.json({
@@ -139,8 +137,6 @@ export async function refreshHandler(req: Request, res: Response) {
   try {
     const incoming =
       (req.cookies && req.cookies.refreshToken) || req.body.refresh_token;
-
-      console.log("refresh token: "+incoming);
 
     if (!incoming)
       throw new ApiError(401, "NO_REFRESH_TOKEN", "No refresh token provided.");

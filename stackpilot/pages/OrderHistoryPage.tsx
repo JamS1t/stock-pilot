@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   CashIcon,
   CreditCardIcon,
@@ -28,6 +28,8 @@ interface Order {
   payment_method?: string;
 }
 
+type OrderSortKey = "order_id" | "order_date" | "items" | "total" | "payment";
+
 const OrderHistoryPage: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -35,6 +37,13 @@ const OrderHistoryPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
+  const [paymentFilter, setPaymentFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [sortKey, setSortKey] = useState<OrderSortKey>("order_date");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(1);
+  const pageSize = 25;
 
   const { formatCurrency, formatLocalDate } = useFormatters();
 
@@ -93,6 +102,148 @@ const OrderHistoryPage: React.FC = () => {
     fetchOrderHistory();
   }, [fetchOrderHistory]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearchTerm, paymentFilter, dateFrom, dateTo, sortKey, sortDirection]);
+
+  const visibleOrders = useMemo(() => {
+    const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+    const toTime = dateTo ? new Date(`${dateTo}T23:59:59`).getTime() : null;
+
+    const filtered = orders.filter((order) => {
+      const orderTime = new Date(order.order_date).getTime();
+      const method = (order.payment_method || "").toLowerCase();
+
+      if (paymentFilter && method !== paymentFilter) return false;
+      if (fromTime !== null && orderTime < fromTime) return false;
+      if (toTime !== null && orderTime > toTime) return false;
+      return true;
+    });
+
+    const getSortValue = (order: Order) => {
+      switch (sortKey) {
+        case "order_id":
+          return order.order_id;
+        case "items":
+          return order.items?.length || 0;
+        case "total":
+          return Number(order.total || 0);
+        case "payment":
+          return order.payment_method || "";
+        case "order_date":
+        default:
+          return new Date(order.order_date).getTime();
+      }
+    };
+
+    return [...filtered].sort((a, b) => {
+      const aValue = getSortValue(a);
+      const bValue = getSortValue(b);
+      const direction = sortDirection === "asc" ? 1 : -1;
+
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return (aValue - bValue) * direction;
+      }
+
+      return String(aValue).localeCompare(String(bValue)) * direction;
+    });
+  }, [dateFrom, dateTo, orders, paymentFilter, sortDirection, sortKey]);
+
+  const pageCount = Math.max(1, Math.ceil(visibleOrders.length / pageSize));
+  const pagedOrders = useMemo(
+    () => visibleOrders.slice((page - 1) * pageSize, page * pageSize),
+    [page, visibleOrders]
+  );
+
+  const handleSort = (key: OrderSortKey) => {
+    if (key === sortKey) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDirection(key === "order_date" ? "desc" : "asc");
+  };
+
+  const renderSortHeader = (
+    key: OrderSortKey,
+    label: string,
+    className = ""
+  ) => {
+    const isActive = sortKey === key;
+    return (
+      <th
+        scope="col"
+        className={className}
+        aria-sort={
+          isActive
+            ? sortDirection === "asc"
+              ? "ascending"
+              : "descending"
+            : "none"
+        }
+      >
+        <button
+          type="button"
+          onClick={() => handleSort(key)}
+          className={`flex w-full items-center gap-1 text-left ${
+            className.includes("text-center")
+              ? "justify-center"
+              : className.includes("text-right")
+              ? "justify-end"
+              : ""
+          }`}
+        >
+          <span>{label}</span>
+          <span className="text-[0.65rem] text-faint">
+            {isActive ? (sortDirection === "asc" ? "^" : "v") : ""}
+          </span>
+        </button>
+      </th>
+    );
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setPaymentFilter("");
+    setDateFrom("");
+    setDateTo("");
+  };
+
+  const exportOrdersCsv = () => {
+    const headers = [
+      "Order ID",
+      "Date",
+      "Items",
+      "Subtotal",
+      "Discount",
+      "Total",
+      "Payment Method",
+      "Status",
+    ];
+    const escapeCsv = (value: unknown) =>
+      `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const rows = visibleOrders.map((order) => [
+      order.order_id,
+      order.order_date,
+      order.items?.map((item) => `${item.product} x${item.qty}`).join("; ") || "",
+      order.sub_total,
+      order.discount || 0,
+      order.total,
+      order.payment_method || "",
+      order.status,
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map(escapeCsv).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleViewReceipt = (order: Order) => {
     setViewingOrder(order);
   };
@@ -138,15 +289,68 @@ const OrderHistoryPage: React.FC = () => {
         </header>
 
         <div className="card p-4 lg:p-5 animate-fade-in">
-          <div className="mb-4">
+          <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(240px,1fr)_repeat(4,minmax(140px,auto))]">
             <input
               type="text"
               placeholder="Search by order ID or product name…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="field max-w-md"
+              className="field"
             />
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="field"
+              aria-label="Date from"
+            />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="field"
+              aria-label="Date to"
+            />
+            <select
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value)}
+              className="field"
+            >
+              <option value="">All payments</option>
+              <option value="cash">Cash</option>
+              <option value="gcash">GCash</option>
+              <option value="utang">Utang</option>
+            </select>
+            <button
+              type="button"
+              onClick={exportOrdersCsv}
+              disabled={visibleOrders.length === 0}
+              className="btn btn-ghost"
+            >
+              Export CSV
+            </button>
           </div>
+
+          {(searchTerm || paymentFilter || dateFrom || dateTo) && (
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase text-faint">
+                Active filters
+              </span>
+              {searchTerm && <span className="pill pill-muted">Search</span>}
+              {dateFrom && <span className="pill pill-muted">From {dateFrom}</span>}
+              {dateTo && <span className="pill pill-muted">To {dateTo}</span>}
+              {paymentFilter && (
+                <span className="pill pill-muted capitalize">{paymentFilter}</span>
+              )}
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-xs font-semibold text-peso hover:text-peso-deep"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
 
           <div className="relative max-h-[calc(100vh-280px)] overflow-x-auto">
             {loading && (
@@ -157,20 +361,22 @@ const OrderHistoryPage: React.FC = () => {
             <table className="data-table">
               <thead className="sticky top-0">
                 <tr>
-                  <th scope="col">Order ID</th>
-                  <th scope="col">Date</th>
-                  <th scope="col">Items</th>
-                  <th scope="col">Total</th>
-                  <th scope="col" className="text-center">Payment</th>
+                  {renderSortHeader("order_id", "Order ID")}
+                  {renderSortHeader("order_date", "Date")}
+                  {renderSortHeader("items", "Items")}
+                  {renderSortHeader("total", "Total", "text-right")}
+                  {renderSortHeader("payment", "Payment", "text-center")}
                   <th scope="col" className="text-center">Resibo</th>
                 </tr>
               </thead>
               <tbody>
-                {orders.length === 0 ? (
+                {visibleOrders.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-12 text-center">
                       <p className="text-sm font-semibold text-muted">
-                        {searchTerm ? "Walang tugmang order" : "Wala pang benta"}
+                        {searchTerm || paymentFilter || dateFrom || dateTo
+                          ? "Walang tugmang order"
+                          : "Wala pang benta"}
                       </p>
                       <p className="mt-1 text-xs text-faint">
                         {searchTerm
@@ -180,7 +386,7 @@ const OrderHistoryPage: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  orders.map((order) => {
+                  pagedOrders.map((order) => {
                     const method = (order.payment_method || "").toLowerCase();
                     const pillClass =
                       method === "cash"
@@ -203,7 +409,7 @@ const OrderHistoryPage: React.FC = () => {
                             ?.map((i) => `${i.product} (x${i.qty})`)
                             .join(", ") || "—"}
                         </td>
-                        <td className="money font-bold text-ink">
+                        <td className="money text-right font-bold text-ink">
                           {formatCurrency(order.total)}
                         </td>
                         <td className="text-center">
@@ -234,6 +440,39 @@ const OrderHistoryPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {visibleOrders.length > pageSize && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3 text-sm text-muted">
+              <span>
+                Showing {(page - 1) * pageSize + 1}-
+                {Math.min(page * pageSize, visibleOrders.length)} of{" "}
+                {visibleOrders.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page === 1}
+                  className="btn btn-ghost"
+                >
+                  Previous
+                </button>
+                <span className="money text-xs font-semibold text-ink">
+                  {page} / {pageCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPage((current) => Math.min(pageCount, current + 1))
+                  }
+                  disabled={page === pageCount}
+                  className="btn btn-ghost"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

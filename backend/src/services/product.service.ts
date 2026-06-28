@@ -16,7 +16,7 @@ export async function createProduct(
   sellingPrice: number,
   stock: number,
   categoryId: number,
-  supplierId: number,
+  supplierId: number | null,
   barcode: string | null
 ) {
   const result = await CreateProduct(
@@ -63,7 +63,7 @@ export async function updateProduct(
   sellingPrice: number,
   stock: number,
   categoryId: number,
-  supplierId: number,
+  supplierId: number | null,
   barcode: string | null
 ) {
   const result = await UpdateProduct(
@@ -95,9 +95,16 @@ export async function getProducts(
   storeId: number,
   search: string | null = null,
   categoryId: number | null = null,
+  supplierId: number | null = null,
   stockStatus: "Out of Stock" | "Low Stock" | "In Stock" | null = null
 ) {
-  const rows = await GetProducts(storeId, search, categoryId, stockStatus);
+  const rows = await GetProducts(
+    storeId,
+    search,
+    categoryId,
+    supplierId,
+    stockStatus
+  );
   return rows;
 }
 

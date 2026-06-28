@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CashDrawerSheet from "../components/counter/CashDrawerSheet";
 import ChargeSheet from "../components/counter/ChargeSheet";
 import CounterTopBar, {
@@ -12,9 +12,12 @@ import InvoiceModal from "../components/InvoiceModal";
 import { useAuth } from "../context/AuthContext";
 import { useFormatters } from "../format";
 import {
+  discardSyncQueueItem,
+  listFailedSyncQueue,
   getSyncQueueSummary,
   queueOfflineMutation,
   retrySyncQueue,
+  SyncQueueItem,
   SyncQueueSummary,
 } from "../offline/syncQueue";
 import { useDebounce } from "../utils/hooks";
@@ -107,10 +110,13 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     failed: 0,
     total: 0,
   });
+  const [failedSyncItems, setFailedSyncItems] = useState<SyncQueueItem[]>([]);
   const [isOnline, setIsOnline] = useState(
     typeof navigator === "undefined" ? true : navigator.onLine
   );
   const debouncedSearchTerm = useDebounce(searchTerm, 250);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const lastAutoAddedBarcode = useRef<string | null>(null);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -165,8 +171,12 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
   }, [refreshCashSession]);
 
   const refreshQueueSummary = useCallback(async () => {
-    const summary = await getSyncQueueSummary();
+    const [summary, failedItems] = await Promise.all([
+      getSyncQueueSummary(),
+      listFailedSyncQueue(),
+    ]);
     setQueueSummary(summary);
+    setFailedSyncItems(failedItems);
   }, []);
 
   useEffect(() => {
@@ -175,7 +185,7 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     const handleOnline = () => {
       setIsOnline(true);
       retrySyncQueue()
-        .then(setQueueSummary)
+        .then(refreshQueueSummary)
         .catch((err: any) =>
           setActionError(err.message || "Unable to retry sync queue.")
         );
@@ -261,7 +271,23 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
         },
       ];
     });
+    requestAnimationFrame(() => searchInputRef.current?.focus());
   };
+
+  useEffect(() => {
+    const term = debouncedSearchTerm.trim();
+    if (!term || lastAutoAddedBarcode.current === term) return;
+
+    const exactBarcodeMatch = products.find(
+      (product) => String(product.barcode || "").trim() === term
+    );
+
+    if (!exactBarcodeMatch) return;
+
+    lastAutoAddedBarcode.current = term;
+    addToCart(exactBarcodeMatch);
+    setSearchTerm("");
+  }, [debouncedSearchTerm, products]);
 
   const updateQuantity = (productId: number, delta: number) => {
     setCart((current) =>
@@ -515,8 +541,8 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     setActionStatus(null);
 
     try {
-      const summary = await retrySyncQueue();
-      setQueueSummary(summary);
+      await retrySyncQueue();
+      await refreshQueueSummary();
       setActionStatus("Sync retry finished.");
       await reloadCounterData();
       return true;
@@ -726,6 +752,18 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     setSyncStatus(ok ? { success: "Sync retry finished." } : { error: "Unable to retry sync." });
   };
 
+  const discardSyncFromSheet = async (localId: string) => {
+    setSyncStatus({ loading: "Discarding sync item..." });
+    try {
+      const summary = await discardSyncQueueItem(localId);
+      setQueueSummary(summary);
+      setFailedSyncItems(await listFailedSyncQueue());
+      setSyncStatus({ success: "Sync item discarded." });
+    } catch (err: any) {
+      setSyncStatus({ error: err.message || "Unable to discard sync item." });
+    }
+  };
+
   return (
     <main className="page">
       <div className="page-inner space-y-4 lg:space-y-5">
@@ -772,13 +810,22 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
             </div>
 
             <input
+              ref={searchInputRef}
               type="search"
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={(event) => {
+                lastAutoAddedBarcode.current = null;
+                setSearchTerm(event.target.value);
+              }}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && firstSearchResult) {
                   event.preventDefault();
-                  addToCart(firstSearchResult);
+                  const term = searchTerm.trim();
+                  const exactBarcodeMatch = products.find(
+                    (product) => String(product.barcode || "").trim() === term
+                  );
+                  addToCart(exactBarcodeMatch || firstSearchResult);
+                  setSearchTerm("");
                 }
               }}
               placeholder="Search name, SKU, or barcode"
@@ -1029,7 +1076,9 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
         isOnline={isOnline}
         status={syncStatus}
         isSubmitting={isSubmitting}
+        failedItems={failedSyncItems}
         onRetry={retrySyncFromSheet}
+        onDiscard={discardSyncFromSheet}
       />
 
       {orderForReceipt && (

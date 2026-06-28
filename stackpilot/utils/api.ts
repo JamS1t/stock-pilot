@@ -229,7 +229,7 @@ export interface Product {
   stock: number;
   category_id: number;
   category_name?: string; // Optional for some responses
-  supplier_id: number;
+  supplier_id: number | null;
   supplier_name?: string; // Optional for some responses
   barcode: string | null;
   store_id: number;
@@ -298,7 +298,7 @@ export const searchProductsForPos = async (
 ): Promise<{ message: string; data: Product[] }> => {
   const query = new URLSearchParams({ search });
   if (categoryId) query.append("category_id", categoryId.toString());
-  const endpoint = `/products/search?${query.toString()}`;
+  const endpoint = `/products/pos?${query.toString()}`;
   return fetchApi(endpoint, "GET");
 };
 

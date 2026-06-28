@@ -1,74 +1,80 @@
+import React from "react";
+import { useAuth } from "../context/AuthContext";
 
-import React from 'react';
-
-// Mock data for demonstration purposes
-const mockUsers = [
-    { id: 1, name: 'Admin User', email: 'admin@example.com', role: 'Admin' },
-    { id: 2, name: 'Manager User', email: 'manager@example.com', role: 'Manager' },
-    { id: 3, name: 'Cashier User', email: 'cashier@example.com', role: 'Cashier' },
-    { id: 4, name: 'Staff User', email: 'staff@example.com', role: 'Staff' },
-];
-
-const RoleBadge: React.FC<{ role: string }> = ({ role }) => {
-    const roleColors: { [key: string]: string } = {
-        'Admin': 'bg-danger-tint text-danger',
-        'Manager': 'bg-utang-tint text-utang',
-        'Cashier': 'bg-gcash-tint text-gcash',
-        'Staff': 'bg-peso-tint text-peso-deep',
-    };
-    return (
-        <span className={`pill ${roleColors[role] || 'pill-muted'}`}>
-            {role}
-        </span>
-    );
-};
+const FieldRow: React.FC<{ label: string; value: React.ReactNode }> = ({
+  label,
+  value,
+}) => (
+  <div className="flex items-center justify-between gap-4 border-b border-line py-3 last:border-0">
+    <span className="text-sm text-muted">{label}</span>
+    <span className="text-right text-sm font-semibold text-ink">{value}</span>
+  </div>
+);
 
 const AdminSettingsPage: React.FC = () => {
-    return (
-        <main className="page">
-            <div className="page-inner space-y-4 lg:space-y-5">
-                <header className="pl-12 lg:pl-0">
-                    <p className="eyebrow">Pamamahala</p>
-                    <h1 className="page-title mt-1">Admin settings</h1>
-                    <p className="mt-1 text-sm text-muted">Manage users, roles, and system settings.</p>
-                </header>
+  const { user, store, role } = useAuth();
+  const storeName = store?.name || store?.store_name || "Current store";
 
-                <section className="card p-4 lg:p-5">
-                    <h2 className="mb-4 font-display text-lg font-semibold text-ink">User management</h2>
-                    <div className="overflow-x-auto">
-                        <table className="data-table">
-                            <thead>
-                                <tr>
-                                    <th scope="col">User</th>
-                                    <th scope="col">Role</th>
-                                    <th scope="col">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {mockUsers.map((user) => (
-                                    <tr key={user.id}>
-                                        <td>
-                                            <div className="font-medium text-ink">{user.name}</div>
-                                            <div className="text-xs text-faint">{user.email}</div>
-                                        </td>
-                                        <td>
-                                            <RoleBadge role={user.role} />
-                                        </td>
-                                        <td>
-                                            <span className="pill pill-ok">
-                                                <span className="pill-dot" />
-                                                Active
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+  return (
+    <main className="page">
+      <div className="page-inner space-y-4 lg:space-y-5">
+        <header className="pl-12 lg:pl-0">
+          <p className="eyebrow">Pamamahala</p>
+          <h1 className="page-title mt-1">Settings</h1>
+          <p className="mt-1 text-sm text-muted">
+            Review the live store and account configuration for this session.
+          </p>
+        </header>
+
+        <section className="grid gap-4 lg:grid-cols-2">
+          <div className="card p-4 lg:p-5">
+            <h2 className="mb-3 font-display text-lg font-semibold text-ink">
+              Store settings
+            </h2>
+            <FieldRow label="Store name" value={storeName} />
+            <FieldRow label="Timezone" value={store?.timezone || "Not set"} />
+            <FieldRow label="Currency" value={store?.currency || "Not set"} />
+            <FieldRow
+              label="Receipt details"
+              value={<span className="text-muted">Not configured</span>}
+            />
+            <FieldRow
+              label="Tax settings"
+              value={<span className="text-muted">Not configured</span>}
+            />
+          </div>
+
+          <div className="card p-4 lg:p-5">
+            <h2 className="mb-3 font-display text-lg font-semibold text-ink">
+              Current user
+            </h2>
+            <FieldRow label="Name" value={user?.name || "Not available"} />
+            <FieldRow label="Email" value={user?.email || "Not available"} />
+            <FieldRow label="Role" value={role || "Not available"} />
+            <FieldRow
+              label="Permissions"
+              value={<span className="text-muted">Server enforced</span>}
+            />
+          </div>
+        </section>
+
+        <section className="card p-4 lg:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-display text-lg font-semibold text-ink">
+                User and role management
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm text-muted">
+                User management is hidden until real backend role APIs and
+                permission enforcement are available.
+              </p>
             </div>
-        </main>
-    );
+            <span className="pill pill-muted">Not enabled</span>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
 };
 
 export default AdminSettingsPage;

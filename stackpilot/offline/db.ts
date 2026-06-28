@@ -88,3 +88,17 @@ export async function getFromStore<T>(
     request.onerror = () => reject(request.error);
   });
 }
+
+export async function deleteFromStore(
+  storeName: string,
+  key: IDBValidKey
+): Promise<void> {
+  const db = await openCounterDb();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    tx.objectStore(storeName).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}

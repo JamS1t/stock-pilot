@@ -1,5 +1,10 @@
 import { fetchApi } from "../utils/api";
-import { getFromStore, putInStore, readAllFromStore } from "./db";
+import {
+  deleteFromStore,
+  getFromStore,
+  putInStore,
+  readAllFromStore,
+} from "./db";
 
 export type SyncQueueStatus = "queued" | "syncing" | "synced" | "failed";
 
@@ -92,7 +97,31 @@ export async function listSyncQueue() {
   return items.sort((a, b) => a.created_at.localeCompare(b.created_at));
 }
 
+export async function listFailedSyncQueue() {
+  const items = await listSyncQueue();
+  return items.filter((item) => item.status === "failed");
+}
+
+export async function discardSyncQueueItem(localId: string) {
+  await deleteFromStore("sync_queue", localId);
+  return getSyncQueueSummary();
+}
+
+export async function cleanupSyncedQueueItems(retentionMs = 60 * 60 * 1000) {
+  const items = await listSyncQueue();
+  const cutoff = Date.now() - retentionMs;
+  const syncedItems = items.filter(
+    (item) =>
+      item.status === "synced" && new Date(item.updated_at).getTime() < cutoff
+  );
+
+  for (const item of syncedItems) {
+    await deleteFromStore("sync_queue", item.local_id);
+  }
+}
+
 export async function getSyncQueueSummary(): Promise<SyncQueueSummary> {
+  await cleanupSyncedQueueItems();
   const items = await listSyncQueue();
   return items.reduce<SyncQueueSummary>(
     (summary, item) => ({
@@ -137,5 +166,6 @@ export async function retrySyncQueue() {
     }
   }
 
+  await cleanupSyncedQueueItems(0);
   return getSyncQueueSummary();
 }

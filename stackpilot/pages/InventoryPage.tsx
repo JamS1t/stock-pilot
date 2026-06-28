@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback } from "react";
-import InventoryTable from "../components/InventoryTable";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import InventoryTable, {
+  InventorySortKey,
+} from "../components/InventoryTable";
 import ProductFormModal from "../components/ProductFormModal";
 import ConfirmationModal from "../components/ConfirmationModal";
 import { PlusCircleIcon } from "../components/icons";
@@ -30,6 +32,11 @@ const InventoryPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("");
   const [stockStatusFilter, setStockStatusFilter] = useState("");
+  const [noBarcodeOnly, setNoBarcodeOnly] = useState(false);
+  const [sortKey, setSortKey] = useState<InventorySortKey>("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
+  const pageSize = 25;
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const debouncedCategoryFilter = useDebounce(categoryFilter, 300);
@@ -102,6 +109,124 @@ const InventoryPage: React.FC = () => {
   useEffect(() => {
     fetchInventoryData();
   }, [fetchInventoryData]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    debouncedSearchTerm,
+    debouncedCategoryFilter,
+    debouncedSupplierFilter,
+    debouncedStockStatusFilter,
+    noBarcodeOnly,
+    sortKey,
+    sortDirection,
+  ]);
+
+  const categoryNameById = useMemo(
+    () =>
+      new Map(categories.map((category) => [category.category_id, category.name])),
+    [categories]
+  );
+
+  const visibleProducts = useMemo(() => {
+    const filtered = noBarcodeOnly
+      ? products.filter((product) => !product.barcode)
+      : products;
+
+    const getSortValue = (product: Product) => {
+      switch (sortKey) {
+        case "category":
+          return product.category_name || categoryNameById.get(product.category_id) || "";
+        case "sku":
+          return product.sku || "";
+        case "barcode":
+          return product.barcode || "";
+        case "selling_price":
+          return Number(product.selling_price || 0);
+        case "stock":
+          return Number(product.stock || 0);
+        case "stock_status":
+          return product.stock_status || "";
+        case "name":
+        default:
+          return product.name || "";
+      }
+    };
+
+    return [...filtered].sort((a, b) => {
+      const aValue = getSortValue(a);
+      const bValue = getSortValue(b);
+      const direction = sortDirection === "asc" ? 1 : -1;
+
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return (aValue - bValue) * direction;
+      }
+
+      return String(aValue).localeCompare(String(bValue)) * direction;
+    });
+  }, [categoryNameById, noBarcodeOnly, products, sortDirection, sortKey]);
+
+  const pageCount = Math.max(1, Math.ceil(visibleProducts.length / pageSize));
+  const pagedProducts = useMemo(
+    () => visibleProducts.slice((page - 1) * pageSize, page * pageSize),
+    [page, visibleProducts]
+  );
+
+  const handleSort = (key: InventorySortKey) => {
+    if (key === sortKey) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDirection("asc");
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setCategoryFilter("");
+    setSupplierFilter("");
+    setStockStatusFilter("");
+    setNoBarcodeOnly(false);
+  };
+
+  const exportInventoryCsv = () => {
+    const headers = [
+      "Product ID",
+      "Name",
+      "SKU",
+      "Barcode",
+      "Category",
+      "Supplier",
+      "Unit Price",
+      "Selling Price",
+      "Stock",
+      "Stock Status",
+    ];
+    const escapeCsv = (value: unknown) =>
+      `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const rows = visibleProducts.map((product) => [
+      product.product_id,
+      product.name,
+      product.sku || "",
+      product.barcode || "",
+      product.category_name || categoryNameById.get(product.category_id) || "",
+      product.supplier_name || "",
+      product.unit_price,
+      product.selling_price,
+      product.stock,
+      product.stock_status || "",
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map(escapeCsv).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `inventory-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   // === Modal Handlers ===
   const handleOpenModalForCreate = () => {
@@ -202,6 +327,46 @@ const InventoryPage: React.FC = () => {
         </header>
 
         <div className="card flex flex-1 flex-col overflow-hidden p-4 lg:p-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setStockStatusFilter("Low Stock");
+                  setNoBarcodeOnly(false);
+                }}
+                className="pill pill-warn"
+              >
+                Low stock
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStockStatusFilter("Out of Stock");
+                  setNoBarcodeOnly(false);
+                }}
+                className="pill pill-bad"
+              >
+                Out of stock
+              </button>
+              <button
+                type="button"
+                onClick={() => setNoBarcodeOnly((current) => !current)}
+                className={`pill ${noBarcodeOnly ? "pill-ok" : "pill-muted"}`}
+              >
+                No barcode
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={exportInventoryCsv}
+              disabled={visibleProducts.length === 0}
+              className="btn btn-ghost"
+            >
+              Export CSV
+            </button>
+          </div>
+
           {/* Filters */}
           <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
             <input
@@ -247,6 +412,41 @@ const InventoryPage: React.FC = () => {
             </select>
           </div>
 
+          {(searchTerm ||
+            categoryFilter ||
+            supplierFilter ||
+            stockStatusFilter ||
+            noBarcodeOnly) && (
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase text-faint">
+                Active filters
+              </span>
+              {searchTerm && <span className="pill pill-muted">Search</span>}
+              {categoryFilter && (
+                <span className="pill pill-muted">
+                  {categoryNameById.get(Number(categoryFilter)) || "Category"}
+                </span>
+              )}
+              {supplierFilter && (
+                <span className="pill pill-muted">
+                  {suppliers.find((s) => s.supplier_id === Number(supplierFilter))
+                    ?.name || "Supplier"}
+                </span>
+              )}
+              {stockStatusFilter && (
+                <span className="pill pill-muted">{stockStatusFilter}</span>
+              )}
+              {noBarcodeOnly && <span className="pill pill-muted">No barcode</span>}
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-xs font-semibold text-peso hover:text-peso-deep"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+
           {/* Table or Empty State */}
           <div className="relative flex-1 overflow-hidden">
             {loading && (
@@ -254,7 +454,7 @@ const InventoryPage: React.FC = () => {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-peso"></div>
               </div>
             )}
-            {products.length === 0 ? (
+            {visibleProducts.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
                 <p className="text-sm font-semibold text-muted">
                   No products found
@@ -265,14 +465,50 @@ const InventoryPage: React.FC = () => {
               </div>
             ) : (
             <InventoryTable
-              products={products}
+              products={pagedProducts}
               mode="management"
               categories={categories}
               onEdit={handleOpenModalForEdit}
               onDelete={handleDeleteConfirmation}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              onSort={handleSort}
             />
             )}
           </div>
+
+          {visibleProducts.length > pageSize && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3 text-sm text-muted">
+              <span>
+                Showing {(page - 1) * pageSize + 1}-
+                {Math.min(page * pageSize, visibleProducts.length)} of{" "}
+                {visibleProducts.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page === 1}
+                  className="btn btn-ghost"
+                >
+                  Previous
+                </button>
+                <span className="money text-xs font-semibold text-ink">
+                  {page} / {pageCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPage((current) => Math.min(pageCount, current + 1))
+                  }
+                  disabled={page === pageCount}
+                  className="btn btn-ghost"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -25,6 +25,13 @@ export async function googleLoginService(
   let payload: any;
 
   if (process.env.MOCK_GOOGLE === "true") {
+    if (process.env.NODE_ENV === "production") {
+      throw new ApiError(
+        500,
+        "MOCK_GOOGLE_FORBIDDEN",
+        "Mock Google auth cannot be enabled in production."
+      );
+    }
     console.warn("⚠️ MOCK MODE ENABLED — skipping Google token verification");
     // Simulated decoded token
     payload = {

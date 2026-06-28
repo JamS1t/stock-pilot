@@ -14,7 +14,7 @@ router.post("/", createProductHandler);
 router.delete("/:id", deleteProductHandler);
 router.put("/:id", updateProductHandler);
 router.get("/", getProductsHandler);
+router.get("/pos", searchProductsPOSHandler);
 router.get("/:id", getProductByIdHandler);
-router.get("/pos/", searchProductsPOSHandler);
 
 export default router;

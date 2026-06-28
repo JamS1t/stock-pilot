@@ -3,6 +3,15 @@ import { Product, Category, getProductById } from "../utils/api"; // Import Prod
 import { PlusCircleIcon, EditIcon, TrashIcon } from "./icons";
 import { useFormatters } from "@/format";
 
+export type InventorySortKey =
+  | "name"
+  | "category"
+  | "sku"
+  | "barcode"
+  | "selling_price"
+  | "stock"
+  | "stock_status";
+
 interface InventoryTableProps {
   products: Product[];
   categories: Category[];
@@ -11,6 +20,9 @@ interface InventoryTableProps {
   onEdit?: (product: Product) => void;
   onDelete?: (productId: number) => void;
   cartItems?: { product_id: number; quantity: number }[]; // New prop for cart state
+  sortKey?: InventorySortKey;
+  sortDirection?: "asc" | "desc";
+  onSort?: (key: InventorySortKey) => void;
 }
 
 const StockStatusBadge: React.FC<{ stock: number }> = ({ stock }) => {
@@ -36,6 +48,9 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
   onEdit,
   onDelete,
   cartItems = [],
+  sortKey,
+  sortDirection = "asc",
+  onSort,
 }) => {
   const getCategoryName = (categoryId: number) => {
     return (
@@ -45,35 +60,60 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
 
   const { formatCurrency } = useFormatters();
 
+  const renderSortHeader = (
+    key: InventorySortKey,
+    label: string,
+    className = ""
+  ) => {
+    const isActive = sortKey === key;
+    return (
+      <th
+        scope="col"
+        className={className}
+        aria-sort={
+          isActive
+            ? sortDirection === "asc"
+              ? "ascending"
+              : "descending"
+            : "none"
+        }
+      >
+        <button
+          type="button"
+          onClick={() => onSort?.(key)}
+          className={`flex w-full items-center gap-1 text-left ${
+            className.includes("text-right")
+              ? "justify-end"
+              : className.includes("text-center")
+              ? "justify-center"
+              : ""
+          }`}
+        >
+          <span>{label}</span>
+          <span className="text-[0.65rem] text-faint">
+            {isActive ? (sortDirection === "asc" ? "^" : "v") : ""}
+          </span>
+        </button>
+      </th>
+    );
+  };
+
   return (
     <div className="relative flex-1 overflow-auto">
       <table className="data-table">
         <thead className="sticky top-0 z-10">
           <tr>
-            <th
-              scope="col"
-              className="sticky left-0 z-10 min-w-[250px] bg-sunken"
-            >
-              Produkto
-            </th>
-            <th scope="col" className="min-w-[150px]">
-              Category
-            </th>
-            <th scope="col" className="min-w-[150px]">
-              SKU
-            </th>
-            <th scope="col" className="min-w-[150px]">
-              Barcode
-            </th>
-            <th scope="col" className="min-w-[100px] text-right">
-              Price
-            </th>
-            <th scope="col" className="min-w-[100px] text-center">
-              Stock
-            </th>
-            <th scope="col" className="min-w-[120px] text-center">
-              Status
-            </th>
+            {renderSortHeader(
+              "name",
+              "Produkto",
+              "sticky left-0 z-10 min-w-[250px] bg-sunken"
+            )}
+            {renderSortHeader("category", "Category", "min-w-[150px]")}
+            {renderSortHeader("sku", "SKU", "min-w-[150px]")}
+            {renderSortHeader("barcode", "Barcode", "min-w-[150px]")}
+            {renderSortHeader("selling_price", "Price", "min-w-[100px] text-right")}
+            {renderSortHeader("stock", "Stock", "min-w-[100px] text-center")}
+            {renderSortHeader("stock_status", "Status", "min-w-[120px] text-center")}
             <th scope="col" className="min-w-[120px] text-center">
               Action
             </th>

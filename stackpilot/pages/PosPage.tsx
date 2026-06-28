@@ -23,6 +23,8 @@ const PosPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [orderForReceipt, setOrderForReceipt] = useState<number | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const lastAutoAddedBarcode = useRef<string | null>(null);
 
   // Debounce search and filter
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -110,7 +112,23 @@ const PosPage: React.FC = () => {
         },
       ];
     });
+    requestAnimationFrame(() => searchInputRef.current?.focus());
   };
+
+  useEffect(() => {
+    const term = debouncedSearchTerm.trim();
+    if (!term || lastAutoAddedBarcode.current === term) return;
+
+    const exactBarcodeMatch = products.find(
+      (product) => String(product.barcode || "").trim() === term
+    );
+
+    if (!exactBarcodeMatch) return;
+
+    lastAutoAddedBarcode.current = term;
+    handleAddToCart(exactBarcodeMatch);
+    setSearchTerm("");
+  }, [debouncedSearchTerm, products]);
 
   const handleUpdateQuantity = (productId: number, quantity: number) => {
     setCart((prevCart) =>
@@ -232,10 +250,24 @@ const PosPage: React.FC = () => {
           <div className="card flex flex-1 flex-col overflow-hidden p-4 lg:p-5">
             <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-2">
               <input
+                ref={searchInputRef}
                 type="search"
                 placeholder="Search name, SKU, or barcode"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  lastAutoAddedBarcode.current = null;
+                  setSearchTerm(e.target.value);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" || products.length === 0) return;
+                  event.preventDefault();
+                  const term = searchTerm.trim();
+                  const exactBarcodeMatch = products.find(
+                    (product) => String(product.barcode || "").trim() === term
+                  );
+                  handleAddToCart(exactBarcodeMatch || products[0]);
+                  setSearchTerm("");
+                }}
                 className="field min-h-12"
               />
               <select

@@ -11,6 +11,88 @@ import { ApiError } from "../utils/apiError";
 import { safeJSONParse } from "../utils/json.util";
 import { successResponse, errorResponse } from "../utils/response.util";
 
+const REQUIRED_NUMBER_FIELDS = {
+  unit_price: "Unit price",
+  selling_price: "Selling price",
+  stock: "Stock",
+  category_id: "Category",
+};
+
+function parseRequiredNumber(
+  value: unknown,
+  field: keyof typeof REQUIRED_NUMBER_FIELDS,
+  options: { min?: number; integer?: boolean } = {}
+) {
+  if (value === null || value === undefined || value === "") {
+    throw new ApiError(
+      400,
+      "MISSING_REQUIRED_FIELDS",
+      `${REQUIRED_NUMBER_FIELDS[field]} is required.`
+    );
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new ApiError(
+      400,
+      "INVALID_NUMBER",
+      `${REQUIRED_NUMBER_FIELDS[field]} must be a valid number.`
+    );
+  }
+
+  if (options.integer && !Number.isInteger(parsed)) {
+    throw new ApiError(
+      400,
+      "INVALID_INTEGER",
+      `${REQUIRED_NUMBER_FIELDS[field]} must be a whole number.`
+    );
+  }
+
+  if (options.min !== undefined && parsed < options.min) {
+    throw new ApiError(
+      400,
+      "INVALID_NUMBER_RANGE",
+      `${REQUIRED_NUMBER_FIELDS[field]} must be at least ${options.min}.`
+    );
+  }
+
+  return parsed;
+}
+
+function parseOptionalId(value: unknown, label: string) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new ApiError(400, "INVALID_ID", `${label} must be a valid number.`);
+  }
+  return parsed;
+}
+
+async function assertBarcodeIsAvailable(
+  storeId: number,
+  barcode: string | null,
+  currentProductId: number | null = null
+) {
+  const normalizedBarcode = barcode?.trim();
+  if (!normalizedBarcode) return;
+
+  const products = await getProducts(storeId, normalizedBarcode, null, null, null);
+  const productJSON = safeJSONParse<any[]>(products?.[0]?.products_json, []);
+  const duplicate = productJSON.find(
+    (product) =>
+      String(product.barcode || "").trim() === normalizedBarcode &&
+      product.product_id !== currentProductId
+  );
+
+  if (duplicate) {
+    throw new ApiError(
+      409,
+      "DUPLICATE_BARCODE",
+      "Barcode is already assigned to another product."
+    );
+  }
+}
+
 export async function createProductHandler(req: Request, res: Response) {
   try {
     const {
@@ -25,24 +107,44 @@ export async function createProductHandler(req: Request, res: Response) {
     } = req.body;
     const { store_id } = req.user!;
 
-    if (!name || !unit_price || !selling_price || !stock || !category_id) {
+    if (!name?.trim()) {
       throw new ApiError(
         400,
         "MISSING_REQUIRED_FIELDS",
-        "Missing required fields for product creation."
+        "Product name is required."
       );
     }
+    const parsedUnitPrice = parseRequiredNumber(unit_price, "unit_price", {
+      min: 0,
+    });
+    const parsedSellingPrice = parseRequiredNumber(
+      selling_price,
+      "selling_price",
+      { min: 0.01 }
+    );
+    const parsedStock = parseRequiredNumber(stock, "stock", {
+      min: 0,
+      integer: true,
+    });
+    const parsedCategoryId = parseRequiredNumber(category_id, "category_id", {
+      min: 1,
+      integer: true,
+    });
+    const parsedSupplierId = parseOptionalId(supplier_id, "Supplier ID");
+    const normalizedBarcode = barcode?.trim() || null;
+
+    await assertBarcodeIsAvailable(store_id, normalizedBarcode);
 
     const result = await createProduct(
       store_id,
-      name,
-      sku || null,
-      unit_price,
-      selling_price,
-      stock,
-      category_id,
-      supplier_id,
-      barcode || null
+      name.trim(),
+      sku?.trim() || null,
+      parsedUnitPrice,
+      parsedSellingPrice,
+      parsedStock,
+      parsedCategoryId,
+      parsedSupplierId,
+      normalizedBarcode
     );
 
     return successResponse(res, "Product created successfully", result, 201);
@@ -98,25 +200,45 @@ export async function updateProductHandler(req: Request, res: Response) {
         "INVALID_ID",
         "Product ID is required and must be a valid number."
       );
-    if (!name || !unit_price || !selling_price || !stock || !category_id) {
+    if (!name?.trim()) {
       throw new ApiError(
         400,
         "MISSING_REQUIRED_FIELDS",
-        "Missing required fields for product update."
+        "Product name is required."
       );
     }
+    const parsedUnitPrice = parseRequiredNumber(unit_price, "unit_price", {
+      min: 0,
+    });
+    const parsedSellingPrice = parseRequiredNumber(
+      selling_price,
+      "selling_price",
+      { min: 0.01 }
+    );
+    const parsedStock = parseRequiredNumber(stock, "stock", {
+      min: 0,
+      integer: true,
+    });
+    const parsedCategoryId = parseRequiredNumber(category_id, "category_id", {
+      min: 1,
+      integer: true,
+    });
+    const parsedSupplierId = parseOptionalId(supplier_id, "Supplier ID");
+    const normalizedBarcode = barcode?.trim() || null;
+
+    await assertBarcodeIsAvailable(store_id, normalizedBarcode, Number(id));
 
     const result = await updateProduct(
       store_id,
       Number(id),
-      name,
-      sku || null,
-      unit_price,
-      selling_price,
-      stock,
-      category_id,
-      supplier_id || null,
-      barcode || null
+      name.trim(),
+      sku?.trim() || null,
+      parsedUnitPrice,
+      parsedSellingPrice,
+      parsedStock,
+      parsedCategoryId,
+      parsedSupplierId,
+      normalizedBarcode
     );
 
     return successResponse(res, "Product updated successfully", result);
@@ -146,16 +268,23 @@ export async function getProductsHandler(req: Request, res: Response) {
         "Supplier ID must be a valid number if provided."
       );
 
+    const supplierFilterId = supplier_id ? Number(supplier_id) : null;
     const products = await getProducts(
       store_id,
       search ? String(search) : null,
       category_id ? Number(category_id) : null,
+      supplierFilterId,
       stock_status
         ? (String(stock_status) as "Out of Stock" | "Low Stock" | "In Stock")
         : null
     );
 
-    const productJSON = safeJSONParse<any[]>(products?.[0]?.products_json, []);
+    let productJSON = safeJSONParse<any[]>(products?.[0]?.products_json, []);
+    if (supplierFilterId !== null) {
+      productJSON = productJSON.filter(
+        (product) => Number(product.supplier_id) === supplierFilterId
+      );
+    }
 
     return successResponse(res, "Products fetched successfully", productJSON);
   } catch (err: any) {
@@ -197,7 +326,6 @@ export async function getProductByIdHandler(req: Request, res: Response) {
 export async function searchProductsPOSHandler(req: Request, res: Response) {
   try {
     const { search, category_id } = req.query;
-    console.log("HELLO");
     const { store_id } = req.user!;
 
     if (!search || typeof search !== "string") {

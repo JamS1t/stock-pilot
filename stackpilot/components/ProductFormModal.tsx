@@ -81,13 +81,36 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
       return;
     }
 
-    if (!formData.unit_price || isNaN(Number(formData.unit_price))) {
+    if (
+      formData.unit_price === "" ||
+      isNaN(Number(formData.unit_price)) ||
+      Number(formData.unit_price) < 0
+    ) {
       setError("Unit price must be a valid number.");
       return;
     }
 
-    if (!formData.selling_price || isNaN(Number(formData.selling_price))) {
-      setError("Selling price must be a valid number.");
+    if (
+      formData.selling_price === "" ||
+      isNaN(Number(formData.selling_price)) ||
+      Number(formData.selling_price) <= 0
+    ) {
+      setError("Selling price must be greater than zero.");
+      return;
+    }
+
+    if (
+      formData.stock === "" ||
+      isNaN(Number(formData.stock)) ||
+      Number(formData.stock) < 0 ||
+      !Number.isInteger(Number(formData.stock))
+    ) {
+      setError("Stock quantity must be a whole number of zero or more.");
+      return;
+    }
+
+    if (!formData.category_id) {
+      setError("Category is required.");
       return;
     }
 
@@ -100,16 +123,16 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
     try {
       const productPayload = {
-        name: formData.name,
-        sku: formData.sku || null,
+        name: formData.name.trim(),
+        sku: formData.sku.trim() || null,
         unit_price: parseFloat(formData.unit_price),
         selling_price: parseFloat(formData.selling_price),
-        stock: parseInt(formData.stock) || 0,
-        category_id: parseInt(formData.category_id),
+        stock: parseInt(formData.stock, 10),
+        category_id: parseInt(formData.category_id, 10),
         supplier_id: formData.supplier_id
-          ? parseInt(formData.supplier_id)
+          ? parseInt(formData.supplier_id, 10)
           : null,
-        barcode: formData.barcode || null,
+        barcode: formData.barcode.trim() || null,
       };
 
       if (product) {
@@ -159,7 +182,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
             />
           </div>
 
-          {/* SKU & Stock Quantity */}
+          {/* SKU & Barcode */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="sku" className="field-label">
@@ -177,20 +200,40 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </div>
 
             <div>
-              <label htmlFor="stock" className="field-label">
-                Stock quantity
+              <label htmlFor="barcode" className="field-label">
+                Barcode (optional)
               </label>
               <input
-                type="number"
-                id="stock"
-                name="stock"
-                value={formData.stock}
+                type="text"
+                id="barcode"
+                name="barcode"
+                value={formData.barcode}
                 onChange={handleChange}
                 disabled={loading}
-                className="field"
-                required
+                className="field font-mono"
+                inputMode="numeric"
+                autoComplete="off"
               />
             </div>
+          </div>
+
+          {/* Stock Quantity */}
+          <div>
+            <label htmlFor="stock" className="field-label">
+              Stock quantity
+            </label>
+            <input
+              type="number"
+              id="stock"
+              name="stock"
+              value={formData.stock}
+              onChange={handleChange}
+              disabled={loading}
+              className="field"
+              min="0"
+              step="1"
+              required
+            />
           </div>
 
           {/* Prices */}
@@ -207,6 +250,8 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 onChange={handleChange}
                 disabled={loading}
                 className="field"
+                min="0"
+                step="0.01"
                 required
               />
             </div>
@@ -222,6 +267,8 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 onChange={handleChange}
                 disabled={loading}
                 className="field"
+                min="0.01"
+                step="0.01"
                 required
               />
             </div>
