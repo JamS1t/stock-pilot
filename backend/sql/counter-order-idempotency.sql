@@ -68,7 +68,7 @@ BEGIN
         CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(p_payload, '$.discount_amount')), '0') AS DECIMAL(12,2)),
         NULLIF(JSON_UNQUOTE(JSON_EXTRACT(p_payload, '$.discount_type')), 'null'),
         JSON_UNQUOTE(JSON_EXTRACT(p_payload, '$.payment_method')),
-        'completed',
+        'paid',
         v_client_mutation_id,
         v_device_id,
         v_local_id

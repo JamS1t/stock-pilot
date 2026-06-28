@@ -53,6 +53,11 @@ interface CounterCartItem {
   stock: number;
 }
 
+interface ActionResult {
+  ok: boolean;
+  error?: string;
+}
+
 const CounterDashboard: React.FC<CounterDashboardProps> = ({
   setActivePage,
 }) => {
@@ -321,7 +326,9 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
   });
 
   const handleSale = async (paymentMethod: "cash" | "gcash") => {
-    if (cart.length === 0 || isSubmitting) return false;
+    if (cart.length === 0 || isSubmitting) {
+      return { ok: false, error: "Cart is empty." };
+    }
 
     setIsSubmitting(true);
     setActionError(null);
@@ -347,7 +354,7 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
         setCart([]);
         setActionStatus(`${paymentMethod.toUpperCase()} sale queued offline.`);
         await refreshQueueSummary();
-        return true;
+        return { ok: true };
       }
 
       const response = await processOrderPOS(payload);
@@ -363,10 +370,11 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
       setActionStatus(`${paymentMethod.toUpperCase()} sale recorded.`);
       if (orderId) setOrderForReceipt(orderId);
       await reloadCounterData();
-      return true;
+      return { ok: true };
     } catch (err: any) {
-      setActionError(err.message || "Unable to process sale.");
-      return false;
+      const message = err.message || "Unable to process sale.";
+      setActionError(message);
+      return { ok: false, error: message };
     } finally {
       setIsSubmitting(false);
     }
@@ -646,23 +654,23 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
 
   const chargeCash = async () => {
     setChargeStatus({ loading: "Recording cash sale..." });
-    const ok = await handleSale("cash");
-    if (ok) {
+    const result: ActionResult = await handleSale("cash");
+    if (result.ok) {
       setChargeStatus({ success: "Cash sale recorded." });
       setOverlay("none");
     } else {
-      setChargeStatus({ error: "Unable to record cash sale." });
+      setChargeStatus({ error: result.error || "Unable to record cash sale." });
     }
   };
 
   const chargeGcash = async () => {
     setChargeStatus({ loading: "Recording GCash sale..." });
-    const ok = await handleSale("gcash");
-    if (ok) {
+    const result: ActionResult = await handleSale("gcash");
+    if (result.ok) {
       setChargeStatus({ success: "GCash sale recorded." });
       setOverlay("none");
     } else {
-      setChargeStatus({ error: "Unable to record GCash sale." });
+      setChargeStatus({ error: result.error || "Unable to record GCash sale." });
     }
   };
 
