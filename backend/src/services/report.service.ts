@@ -9,6 +9,11 @@ import {
   ReportDateInput,
 } from "../db/procedures/report.proc";
 import { ApiError } from "../utils/apiError";
+import { logger } from "../utils/logger.util";
+
+function serializeReportDate(value: ReportDateInput) {
+  return value instanceof Date ? value.toISOString() : value;
+}
 
 export async function getSalesReportJSON(
   storeId: number,
@@ -29,7 +34,15 @@ export async function getSalesReportJSON(
     );
     return report;
   } catch (err) {
-    console.error("GetSalesReportJSON error:", err);
+    logger.error("report.sales_fetch_failed", {
+      error: err,
+      store_id: storeId,
+      start_date: serializeReportDate(startDate),
+      end_date: serializeReportDate(endDate),
+      category_id: categoryId,
+      product_id: productId,
+      granularity,
+    });
     throw new ApiError(500, "DB_ERROR", "Failed to fetch sales report.");
   }
 }
@@ -52,7 +65,15 @@ export async function getBestSellersReport(
       limit
     );
   } catch (err) {
-    console.error("GetBestSellersReport error:", err);
+    logger.error("report.best_sellers_fetch_failed", {
+      error: err,
+      store_id: storeId,
+      start_date: serializeReportDate(startDate),
+      end_date: serializeReportDate(endDate),
+      category_id: categoryId,
+      product_id: productId,
+      limit,
+    });
     throw new ApiError(500, "DB_ERROR", "Failed to fetch best sellers report.");
   }
 }
@@ -75,7 +96,15 @@ export async function getProfitBreakdownReport(
       limit
     );
   } catch (err) {
-    console.error("GetProfitBreakdownReport error:", err);
+    logger.error("report.profit_breakdown_fetch_failed", {
+      error: err,
+      store_id: storeId,
+      start_date: serializeReportDate(startDate),
+      end_date: serializeReportDate(endDate),
+      category_id: categoryId,
+      product_id: productId,
+      limit,
+    });
     throw new ApiError(
       500,
       "DB_ERROR",
@@ -100,7 +129,14 @@ export async function getPaymentSplitReport(
       productId
     );
   } catch (err) {
-    console.error("GetPaymentSplitReport error:", err);
+    logger.error("report.payment_split_fetch_failed", {
+      error: err,
+      store_id: storeId,
+      start_date: serializeReportDate(startDate),
+      end_date: serializeReportDate(endDate),
+      category_id: categoryId,
+      product_id: productId,
+    });
     throw new ApiError(500, "DB_ERROR", "Failed to fetch payment split report.");
   }
 }
@@ -125,7 +161,16 @@ export async function getLowStockSellingFastReport(
       limit
     );
   } catch (err) {
-    console.error("GetLowStockSellingFastReport error:", err);
+    logger.error("report.low_stock_selling_fast_fetch_failed", {
+      error: err,
+      store_id: storeId,
+      start_date: serializeReportDate(startDate),
+      end_date: serializeReportDate(endDate),
+      category_id: categoryId,
+      product_id: productId,
+      low_stock_threshold: lowStockThreshold,
+      limit,
+    });
     throw new ApiError(
       500,
       "DB_ERROR",
@@ -152,7 +197,15 @@ export async function getDeadStockReport(
       limit
     );
   } catch (err) {
-    console.error("GetDeadStockReport error:", err);
+    logger.error("report.dead_stock_fetch_failed", {
+      error: err,
+      store_id: storeId,
+      start_date: serializeReportDate(startDate),
+      end_date: serializeReportDate(endDate),
+      category_id: categoryId,
+      product_id: productId,
+      limit,
+    });
     throw new ApiError(500, "DB_ERROR", "Failed to fetch dead stock report.");
   }
 }
@@ -177,7 +230,16 @@ export async function getPreviousPeriodComparisonReport(
       productId
     );
   } catch (err) {
-    console.error("GetPreviousPeriodComparisonReport error:", err);
+    logger.error("report.previous_period_comparison_fetch_failed", {
+      error: err,
+      store_id: storeId,
+      start_date: serializeReportDate(startDate),
+      end_date: serializeReportDate(endDate),
+      previous_start_date: serializeReportDate(previousStartDate),
+      previous_end_date: serializeReportDate(previousEndDate),
+      category_id: categoryId,
+      product_id: productId,
+    });
     throw new ApiError(
       500,
       "DB_ERROR",

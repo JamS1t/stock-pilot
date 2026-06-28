@@ -9,6 +9,7 @@ import { ApiError } from "../utils/apiError";
 import { safeJSONParse } from "../utils/json.util";
 import { errorResponse, successResponse } from "../utils/response.util";
 import { logAuditSafe } from "../services/audit.service";
+import { logger } from "../utils/logger.util";
 
 function parseId(value: unknown, code: string, message: string) {
   const id = Number(value);
@@ -49,10 +50,23 @@ export async function openCashSessionHandler(req: Request, res: Response) {
       result.cash_session_id,
       { opening_cash: openingCash }
     );
+    logger.info("cash_session.open_succeeded", {
+      store_id,
+      user_id,
+      cash_session_id: result.cash_session_id,
+      opening_cash: openingCash,
+    });
 
     return successResponse(res, "Cash session opened successfully", result, 201);
   } catch (err: any) {
-    console.error("Cash session open error:", err);
+    logger.error("cash_session.open_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+      user_id: req.user?.user_id || null,
+      opening_cash: Number.isFinite(Number(req.body?.opening_cash))
+        ? Number(req.body.opening_cash)
+        : null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");
@@ -102,10 +116,30 @@ export async function closeCashSessionHandler(req: Request, res: Response) {
         difference: actualCash - expectedCash,
       }
     );
+    logger.info("cash_session.close_succeeded", {
+      store_id,
+      user_id,
+      cash_session_id: cashSessionId,
+      expected_cash: expectedCash,
+      actual_cash: actualCash,
+      difference: actualCash - expectedCash,
+      affected_rows: result.affected_rows,
+    });
 
     return successResponse(res, "Cash session closed successfully", result);
   } catch (err: any) {
-    console.error("Cash session close error:", err);
+    logger.error("cash_session.close_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+      user_id: req.user?.user_id || null,
+      cash_session_id: req.params.id || null,
+      expected_cash: Number.isFinite(Number(req.body?.expected_cash))
+        ? Number(req.body.expected_cash)
+        : null,
+      actual_cash: Number.isFinite(Number(req.body?.actual_cash))
+        ? Number(req.body.actual_cash)
+        : null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");
@@ -134,7 +168,11 @@ export async function getCashSessionsHandler(req: Request, res: Response) {
 
     return successResponse(res, "Cash sessions fetched successfully", sessions);
   } catch (err: any) {
-    console.error("Cash session list error:", err);
+    logger.error("cash_session.list_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+      status: req.query?.status || null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");
@@ -149,7 +187,10 @@ export async function getOpenCashSessionHandler(req: Request, res: Response) {
 
     return successResponse(res, "Open cash session fetched successfully", session);
   } catch (err: any) {
-    console.error("Open cash session error:", err);
+    logger.error("cash_session.open_fetch_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");

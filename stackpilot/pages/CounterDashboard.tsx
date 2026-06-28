@@ -814,6 +814,39 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     setSyncStatus(ok ? { success: "Sync retry finished." } : { error: "Unable to retry sync." });
   };
 
+  const refreshAndRetrySyncFromSheet = async () => {
+    setSyncStatus({ loading: "Refreshing counter data..." });
+    try {
+      await reloadCounterData();
+      setSyncStatus({ loading: "Retrying sync conflicts..." });
+      const ok = await handleRetrySync();
+      setSyncStatus(
+        ok
+          ? { success: "Counter data refreshed. Sync retry finished." }
+          : { error: "Unable to retry sync after refresh." }
+      );
+    } catch (err: any) {
+      setSyncStatus({ error: err.message || "Unable to refresh counter data." });
+    }
+  };
+
+  const reviewSyncItemFromSheet = (item: SyncQueueItem) => {
+    switch (item.conflict?.kind) {
+      case "missing_product":
+      case "insufficient_stock":
+        closeOverlay();
+        setActivePage("inventory");
+        break;
+      case "missing_customer":
+      case "duplicate_customer":
+        setWhoOwesStatus({});
+        setOverlay("whoOwes");
+        break;
+      default:
+        setSyncStatus({ success: "Review the conflict details before choosing an action." });
+    }
+  };
+
   const discardSyncFromSheet = async (localId: string) => {
     setSyncStatus({ loading: "Discarding sync item..." });
     try {
@@ -1140,6 +1173,8 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
         isSubmitting={isSubmitting}
         failedItems={failedSyncItems}
         onRetry={retrySyncFromSheet}
+        onRefreshAndRetry={refreshAndRetrySyncFromSheet}
+        onReview={reviewSyncItemFromSheet}
         onDiscard={discardSyncFromSheet}
       />
 

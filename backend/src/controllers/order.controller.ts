@@ -80,6 +80,17 @@ export async function processOrderPOSHandler(req: Request, res: Response) {
         item_count: Array.isArray(payload.items) ? payload.items.length : 0,
       }
     );
+    logger.info("order.process_succeeded", {
+      store_id,
+      user_id: req.user!.user_id,
+      order_id: result.order_id,
+      payment_method: payload.payment_method || null,
+      total: payload.total || null,
+      item_count: Array.isArray(payload.items) ? payload.items.length : 0,
+      client_mutation_id: payload.client_mutation_id || client_mutation_id || null,
+      device_id: payload.device_id || device_id || null,
+      local_id: payload.local_id || local_id || null,
+    });
 
     return successResponse(res, "Order processed successfully", result, 201);
   } catch (err: any) {
@@ -91,6 +102,13 @@ export async function processOrderPOSHandler(req: Request, res: Response) {
         ? req.body.payload.items.length
         : 0,
       payment_method: req.body?.payload?.payment_method || null,
+      total: req.body?.payload?.total || null,
+      client_mutation_id:
+        req.body?.payload?.client_mutation_id ||
+        req.body?.client_mutation_id ||
+        null,
+      device_id: req.body?.payload?.device_id || req.body?.device_id || null,
+      local_id: req.body?.payload?.local_id || req.body?.local_id || null,
     });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);

@@ -9,6 +9,7 @@ import { ApiError } from "../utils/apiError";
 import { safeJSONParse } from "../utils/json.util";
 import { errorResponse, successResponse } from "../utils/response.util";
 import { logAuditSafe } from "../services/audit.service";
+import { logger } from "../utils/logger.util";
 
 const PAYMENT_METHODS: PaymentMethod[] = ["cash", "gcash", "other"];
 
@@ -87,10 +88,33 @@ export async function createPaymentHandler(req: Request, res: Response) {
         method: parsedMethod,
       }
     );
+    logger.info("payment.create_succeeded", {
+      store_id,
+      user_id,
+      payment_id: result.payment_id,
+      customer_id: customerId,
+      amount: parsedAmount,
+      method: parsedMethod,
+      client_mutation_id: client_mutation_id || null,
+      device_id: device_id || null,
+      local_id: local_id || null,
+    });
 
     return successResponse(res, "Payment created successfully", result, 201);
   } catch (err: any) {
-    console.error("Payment create error:", err);
+    logger.error("payment.create_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+      user_id: req.user?.user_id || null,
+      customer_id: req.body?.customer_id || null,
+      amount: Number.isFinite(Number(req.body?.amount))
+        ? Number(req.body.amount)
+        : null,
+      method: req.body?.method || null,
+      client_mutation_id: req.body?.client_mutation_id || null,
+      device_id: req.body?.device_id || null,
+      local_id: req.body?.local_id || null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");
@@ -119,7 +143,13 @@ export async function listPaymentsHandler(req: Request, res: Response) {
 
     return successResponse(res, "Payments fetched successfully", payments);
   } catch (err: any) {
-    console.error("Payment list error:", err);
+    logger.error("payment.list_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+      customer_id: req.query?.customer_id || null,
+      from: req.query?.from || null,
+      to: req.query?.to || null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");
@@ -147,10 +177,21 @@ export async function voidPaymentHandler(req: Request, res: Response) {
       "payment",
       paymentId
     );
+    logger.info("payment.void_succeeded", {
+      store_id,
+      user_id,
+      payment_id: paymentId,
+      affected_rows: result.affected_rows,
+    });
 
     return successResponse(res, "Payment voided successfully", result);
   } catch (err: any) {
-    console.error("Payment void error:", err);
+    logger.error("payment.void_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+      user_id: req.user?.user_id || null,
+      payment_id: req.params.id || null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");

@@ -11,6 +11,7 @@ import {
 } from "../services/report.service";
 import { ApiError } from "../utils/apiError";
 import { successResponse, errorResponse } from "../utils/response.util";
+import { logger } from "../utils/logger.util";
 
 function parseReportDate(value: unknown, label: string) {
   if (!value) {
@@ -80,8 +81,27 @@ function derivePreviousRange(startDate: string, endDate: string) {
   };
 }
 
-function handleReportError(res: Response, label: string, err: any) {
-  console.error(`${label} report fetch error:`, err);
+function getReportLogQuery(query: Request["query"]) {
+  return {
+    start_date: query.start_date || null,
+    end_date: query.end_date || null,
+    previous_start_date: query.previous_start_date || null,
+    previous_end_date: query.previous_end_date || null,
+    category_id: query.category_id || null,
+    product_id: query.product_id || null,
+    granularity: query.granularity || null,
+    low_stock_threshold: query.low_stock_threshold || null,
+    limit: query.limit || null,
+  };
+}
+
+function handleReportError(req: Request, res: Response, reportType: string, err: any) {
+  logger.error("report.request_failed", {
+    error: err,
+    report_type: reportType,
+    store_id: req.user?.store_id || null,
+    query: getReportLogQuery(req.query),
+  });
   if (err instanceof ApiError) {
     return errorResponse(res, err.status, err.code, err.message);
   }
@@ -120,7 +140,7 @@ export async function getSalesReportJSONHandler(req: Request, res: Response) {
 
     return successResponse(res, "Sales report fetched successfully", report);
   } catch (err: any) {
-    return handleReportError(res, "Sales", err);
+    return handleReportError(req, res, "sales", err);
   }
 }
 
@@ -141,7 +161,7 @@ export async function getBestSellersReportHandler(req: Request, res: Response) {
 
     return successResponse(res, "Best sellers report fetched successfully", report);
   } catch (err: any) {
-    return handleReportError(res, "Best sellers", err);
+    return handleReportError(req, res, "best_sellers", err);
   }
 }
 
@@ -169,7 +189,7 @@ export async function getProfitBreakdownReportHandler(
       report
     );
   } catch (err: any) {
-    return handleReportError(res, "Profit breakdown", err);
+    return handleReportError(req, res, "profit_breakdown", err);
   }
 }
 
@@ -189,7 +209,7 @@ export async function getPaymentSplitReportHandler(req: Request, res: Response) 
 
     return successResponse(res, "Payment split report fetched successfully", report);
   } catch (err: any) {
-    return handleReportError(res, "Payment split", err);
+    return handleReportError(req, res, "payment_split", err);
   }
 }
 
@@ -222,7 +242,7 @@ export async function getLowStockSellingFastReportHandler(
       report
     );
   } catch (err: any) {
-    return handleReportError(res, "Low-stock selling-fast", err);
+    return handleReportError(req, res, "low_stock_selling_fast", err);
   }
 }
 
@@ -243,7 +263,7 @@ export async function getDeadStockReportHandler(req: Request, res: Response) {
 
     return successResponse(res, "Dead stock report fetched successfully", report);
   } catch (err: any) {
-    return handleReportError(res, "Dead stock", err);
+    return handleReportError(req, res, "dead_stock", err);
   }
 }
 
@@ -292,6 +312,6 @@ export async function getPreviousPeriodComparisonReportHandler(
       report
     );
   } catch (err: any) {
-    return handleReportError(res, "Previous-period comparison", err);
+    return handleReportError(req, res, "previous_period_comparison", err);
   }
 }

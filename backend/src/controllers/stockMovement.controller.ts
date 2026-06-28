@@ -8,6 +8,7 @@ import { ApiError } from "../utils/apiError";
 import { safeJSONParse } from "../utils/json.util";
 import { errorResponse, successResponse } from "../utils/response.util";
 import { logAuditSafe } from "../services/audit.service";
+import { logger } from "../utils/logger.util";
 
 const REASONS: StockMovementReason[] = [
   "sale",
@@ -86,6 +87,17 @@ export async function createStockMovementHandler(req: Request, res: Response) {
         source_id: source_id ? Number(source_id) : null,
       }
     );
+    logger.info("stock_movement.create_succeeded", {
+      store_id,
+      user_id,
+      movement_id: result.movement_id,
+      product_id: productId,
+      quantity_delta: quantityDelta,
+      reason,
+      source_type: source_type || null,
+      source_id: source_id ? Number(source_id) : null,
+      client_mutation_id: client_mutation_id || null,
+    });
 
     return successResponse(
       res,
@@ -94,7 +106,19 @@ export async function createStockMovementHandler(req: Request, res: Response) {
       201
     );
   } catch (err: any) {
-    console.error("Stock movement create error:", err);
+    logger.error("stock_movement.create_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+      user_id: req.user?.user_id || null,
+      product_id: req.body?.product_id || null,
+      quantity_delta: Number.isFinite(Number(req.body?.quantity_delta))
+        ? Number(req.body.quantity_delta)
+        : null,
+      reason: req.body?.reason || null,
+      source_type: req.body?.source_type || null,
+      source_id: req.body?.source_id || null,
+      client_mutation_id: req.body?.client_mutation_id || null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");
@@ -127,7 +151,13 @@ export async function listStockMovementsHandler(req: Request, res: Response) {
       movements
     );
   } catch (err: any) {
-    console.error("Stock movement list error:", err);
+    logger.error("stock_movement.list_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+      product_id: req.query?.product_id || null,
+      from: req.query?.from || null,
+      to: req.query?.to || null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");

@@ -11,6 +11,7 @@ import {
   getSalesReport,
   getCategories,
   getProducts,
+  getBestSellersReport,
   getProfitBreakdownReport,
   getPaymentSplitReport,
   getLowStockSellingFastReport,
@@ -42,6 +43,9 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
   );
   const [comparisonReport, setComparisonReport] =
     useState<PreviousPeriodComparison | null>(null);
+  const [bestSellers, setBestSellers] = useState<
+    ReportProductPerformance[]
+  >([]);
   const [productPerformance, setProductPerformance] = useState<
     ReportProductPerformance[]
   >([]);
@@ -120,6 +124,7 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
       const [
         reportResponse,
         comparisonResponse,
+        bestSellersResponse,
         productPerformanceResponse,
         paymentSplitResponse,
         lowStockSellingFastResponse,
@@ -130,6 +135,10 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
         await Promise.all([
           getSalesReport(startDate, endDate, granularity, reportFilters),
           getPreviousPeriodComparisonReport(startDate, endDate, reportFilters),
+          getBestSellersReport(startDate, endDate, {
+            ...reportFilters,
+            limit: 5,
+          }),
           getProfitBreakdownReport(startDate, endDate, {
             ...reportFilters,
             limit: 8,
@@ -155,6 +164,7 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
 
       setSalesReport(reportResponse.data || reportResponse);
       setComparisonReport(comparisonResponse.data);
+      setBestSellers(bestSellersResponse.data || []);
       setProductPerformance(productPerformanceResponse.data || []);
       setPaymentSplit(paymentSplitResponse.data || []);
       setLowStockSellingFast(lowStockSellingFastResponse.data || []);
@@ -464,8 +474,49 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
 
           <div className="grid gap-4 xl:grid-cols-2">
             <div className="card p-4 lg:p-5">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <p className="eyebrow">Best sellers</p>
+                  <h2 className="font-display text-lg font-semibold text-ink">
+                    Top movers
+                  </h2>
+                </div>
+                <span className="pill pill-ok">{bestSellers.length} shown</span>
+              </div>
+              {bestSellers.length > 0 ? (
+                <div className="space-y-2">
+                  {bestSellers.map((row, index) => (
+                    <div
+                      key={row.product_id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3 py-2.5"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="money flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-peso-tint text-sm font-bold text-peso">
+                          {index + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-ink">
+                            {row.product_name}
+                          </p>
+                          <p className="text-xs text-muted">
+                            {row.category_name || "Uncategorized"} - {row.quantity_sold} sold
+                          </p>
+                        </div>
+                      </div>
+                      <span className="money flex-shrink-0 text-sm font-bold text-peso">
+                        {formatCurrency(row.total_revenue)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted">No best sellers for this period.</p>
+              )}
+            </div>
+
+            <div className="card p-4 lg:p-5">
               <h2 className="mb-4 font-display text-lg font-semibold text-ink">
-                Product performance
+                Profit breakdown
               </h2>
               {productPerformance.length > 0 ? (
                 <div className="overflow-x-auto">

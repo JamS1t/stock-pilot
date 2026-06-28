@@ -10,6 +10,7 @@ import {
 import { ApiError } from "../utils/apiError";
 import { safeJSONParse } from "../utils/json.util";
 import { errorResponse, successResponse } from "../utils/response.util";
+import { logger } from "../utils/logger.util";
 
 const UTANG_SOURCES: UtangSource[] = ["manual", "voice", "ocr"];
 
@@ -98,10 +99,35 @@ export async function createUtangHandler(req: Request, res: Response) {
       device_id || null,
       local_id || null
     );
+    logger.info("utang.create_succeeded", {
+      store_id,
+      user_id,
+      entry_id: result.entry_id,
+      customer_id: customerId,
+      amount: parsedAmount,
+      source: parsedSource,
+      item_count: Array.isArray(items) ? items.length : 0,
+      client_mutation_id: client_mutation_id || null,
+      device_id: device_id || null,
+      local_id: local_id || null,
+    });
 
     return successResponse(res, "Utang entry created successfully", result, 201);
   } catch (err: any) {
-    console.error("Utang create error:", err);
+    logger.error("utang.create_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+      user_id: req.user?.user_id || null,
+      customer_id: req.body?.customer_id || null,
+      amount: Number.isFinite(Number(req.body?.amount))
+        ? Number(req.body.amount)
+        : null,
+      source: req.body?.source || null,
+      item_count: Array.isArray(req.body?.items) ? req.body.items.length : 0,
+      client_mutation_id: req.body?.client_mutation_id || null,
+      device_id: req.body?.device_id || null,
+      local_id: req.body?.local_id || null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");
@@ -130,7 +156,13 @@ export async function listUtangHandler(req: Request, res: Response) {
 
     return successResponse(res, "Utang entries fetched successfully", entries);
   } catch (err: any) {
-    console.error("Utang list error:", err);
+    logger.error("utang.list_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+      customer_id: req.query?.customer_id || null,
+      from: req.query?.from || null,
+      to: req.query?.to || null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");
@@ -150,7 +182,12 @@ export async function voidUtangHandler(req: Request, res: Response) {
 
     return successResponse(res, "Utang entry voided successfully", result);
   } catch (err: any) {
-    console.error("Utang void error:", err);
+    logger.error("utang.void_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+      user_id: req.user?.user_id || null,
+      entry_id: req.params.id || null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");
@@ -171,7 +208,11 @@ export async function getCustomerBalanceHandler(req: Request, res: Response) {
 
     return successResponse(res, "Customer balance fetched successfully", balance);
   } catch (err: any) {
-    console.error("Customer balance error:", err);
+    logger.error("utang.customer_balance_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+      customer_id: req.params.id || null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");
@@ -187,7 +228,10 @@ export async function getWhoOwesHandler(req: Request, res: Response) {
 
     return successResponse(res, "Who owes fetched successfully", whoOwes);
   } catch (err: any) {
-    console.error("Who owes error:", err);
+    logger.error("utang.who_owes_failed", {
+      error: err,
+      store_id: req.user?.store_id || null,
+    });
     if (err instanceof ApiError)
       return errorResponse(res, err.status, err.code, err.message);
     return errorResponse(res, 500, "SERVER_ERROR", "Internal server error.");
