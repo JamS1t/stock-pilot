@@ -8,6 +8,7 @@ import {
 import { ApiError } from "../utils/apiError";
 import { safeJSONParse } from "../utils/json.util";
 import { errorResponse, successResponse } from "../utils/response.util";
+import { logAuditSafe } from "../services/audit.service";
 
 const PAYMENT_METHODS: PaymentMethod[] = ["cash", "gcash", "other"];
 
@@ -70,6 +71,22 @@ export async function createPaymentHandler(req: Request, res: Response) {
       device_id || null,
       local_id || null
     );
+    await logAuditSafe(
+      {
+        storeId: store_id,
+        userId: user_id,
+        ip: req.ip || null,
+        userAgent: req.get("User-Agent") || null,
+      },
+      "payment.create",
+      "payment",
+      result.payment_id,
+      {
+        customer_id: customerId,
+        amount: parsedAmount,
+        method: parsedMethod,
+      }
+    );
 
     return successResponse(res, "Payment created successfully", result, 201);
   } catch (err: any) {
@@ -119,6 +136,17 @@ export async function voidPaymentHandler(req: Request, res: Response) {
     const { store_id, user_id } = req.user!;
 
     const result = await voidPayment(store_id, paymentId, user_id);
+    await logAuditSafe(
+      {
+        storeId: store_id,
+        userId: user_id,
+        ip: req.ip || null,
+        userAgent: req.get("User-Agent") || null,
+      },
+      "payment.void",
+      "payment",
+      paymentId
+    );
 
     return successResponse(res, "Payment voided successfully", result);
   } catch (err: any) {

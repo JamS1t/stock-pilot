@@ -7,6 +7,7 @@ import {
   SearchProductsPOS,
 } from "../db/procedures/product.proc";
 import { ApiError } from "../utils/apiError";
+import { SortDirection } from "../utils/pagination.util";
 
 export async function createProduct(
   storeId: number,
@@ -96,14 +97,24 @@ export async function getProducts(
   search: string | null = null,
   categoryId: number | null = null,
   supplierId: number | null = null,
-  stockStatus: "Out of Stock" | "Low Stock" | "In Stock" | null = null
+  stockStatus: "Out of Stock" | "Low Stock" | "In Stock" | null = null,
+  noBarcodeOnly = false,
+  sortBy = "name",
+  sortDir: SortDirection = "asc",
+  limit: number | null = null,
+  offset: number | null = null
 ) {
   const rows = await GetProducts(
     storeId,
     search,
     categoryId,
     supplierId,
-    stockStatus
+    stockStatus,
+    noBarcodeOnly,
+    sortBy,
+    sortDir,
+    limit,
+    offset
   );
   return rows;
 }

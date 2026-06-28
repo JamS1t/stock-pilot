@@ -184,7 +184,9 @@ const ReportsPage: React.FC<ReportsPageProps> = () => {
       );
       setProducts(productsResponse.data || []);
 
-      const firstOrderRow = ordersResponse.data?.[0] as OrdersListRow | undefined;
+      const firstOrderRow = Array.isArray(ordersResponse.data)
+        ? (ordersResponse.data[0] as OrdersListRow | undefined)
+        : undefined;
       const ordersJsonRaw = firstOrderRow?.orders_json ?? ordersResponse.data;
       let parsedOrders: OrderListItem[] = [];
       if (typeof ordersJsonRaw === "string") {

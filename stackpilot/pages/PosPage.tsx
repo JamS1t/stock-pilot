@@ -12,6 +12,7 @@ import {
 } from "../utils/api";
 import { useAuth } from "../context/AuthContext";
 import { useDebounce } from "../utils/hooks";
+import { cacheProducts, readCachedProducts } from "../offline/cache";
 
 const PosPage: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -43,6 +44,23 @@ const PosPage: React.FC = () => {
     setError(null);
 
     try {
+      const cachedProducts = await readCachedProducts();
+      if (cachedProducts.length > 0) {
+        const cachedFilteredProducts = cachedProducts.filter((product) => {
+          const term = debouncedSearchTerm.trim().toLowerCase();
+          const categoryMatches =
+            debouncedCategoryFilter === "" ||
+            product.category_id === Number(debouncedCategoryFilter);
+          const searchMatches =
+            !term ||
+            product.name.toLowerCase().includes(term) ||
+            String(product.sku || "").toLowerCase().includes(term) ||
+            String(product.barcode || "").toLowerCase().includes(term);
+          return product.stock > 0 && categoryMatches && searchMatches;
+        });
+        setProducts(cachedFilteredProducts);
+      }
+
       const [productsResponse, categoriesResponse] = await Promise.all([
         getProducts({
           search: debouncedSearchTerm || undefined,
@@ -61,13 +79,20 @@ const PosPage: React.FC = () => {
       );
 
       setProducts(filteredProducts);
+      await cacheProducts(productsResponse.data || []);
       setCategories(
         Array.isArray(categoriesResponse.data)
           ? categoriesResponse.data
           : [categoriesResponse.data]
       );
     } catch (err: any) {
-      setError(err.message || "Failed to fetch POS data.");
+      const cachedProducts = await readCachedProducts();
+      if (cachedProducts.length > 0) {
+        setProducts(cachedProducts.filter((product) => product.stock > 0));
+        setError(null);
+      } else {
+        setError(err.message || "Failed to fetch POS data.");
+      }
     } finally {
       setLoading(false);
     }

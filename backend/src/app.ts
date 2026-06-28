@@ -17,6 +17,7 @@ import paymentRoutes from "./routes/payment.routes";
 import stockMovementRoutes from "./routes/stockMovement.routes";
 import cashSessionRoutes from "./routes/cashSession.routes";
 import aiRoutes from "./routes/ai.routes";
+import settingsRoutes from "./routes/settings.routes";
 import { requireAuth } from "./middlewares/auth.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
 
@@ -66,6 +67,7 @@ app.use("/api/payments", mutationLimiter, paymentRoutes);
 app.use("/api/stock-movements", mutationLimiter, stockMovementRoutes);
 app.use("/api/cash-sessions", mutationLimiter, cashSessionRoutes);
 app.use("/api/ai", mutationLimiter, aiRoutes);
+app.use("/api/settings", mutationLimiter, settingsRoutes);
 
 app.use(errorHandler);
 

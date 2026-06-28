@@ -8,9 +8,9 @@ const API_BASE_URL =
 
 let refreshPromise: Promise<string | null> | null = null;
 
-// Function to get the access token from local storage
+// Keep bearer tokens out of persistent storage; refresh stays in HttpOnly cookie.
 const getAccessToken = (): string | null => {
-  return localStorage.getItem("accessToken");
+  return sessionStorage.getItem("accessToken");
 };
 
 export const fetchApi = async <T>(
@@ -105,7 +105,7 @@ export const refreshAccessToken = async (): Promise<string | null> => {
     const newToken = data?.accessToken;
 
     if (newToken) {
-      localStorage.setItem("accessToken", newToken);
+      sessionStorage.setItem("accessToken", newToken);
       // console.info("✅ Access token refreshed successfully.");
       return newToken;
     }
@@ -219,6 +219,19 @@ export const deleteSupplier = async (
 };
 
 // --- Product API Calls ---
+export interface PaginationMeta {
+  page: number;
+  page_size: number;
+  total: number;
+  page_count: number;
+}
+
+export interface ApiResponse<T> {
+  message: string;
+  data: T;
+  pagination?: PaginationMeta;
+}
+
 export interface Product {
   // Export the interface
   product_id: number;
@@ -241,7 +254,19 @@ export const getProducts = async (filters?: {
   category_id?: number;
   supplier_id?: number;
   stock_status?: "Out of Stock" | "Low Stock" | "In Stock";
-}): Promise<{ message: string; data: Product[] }> => {
+  no_barcode_only?: boolean;
+  sort_by?:
+    | "name"
+    | "category"
+    | "sku"
+    | "barcode"
+    | "selling_price"
+    | "stock"
+    | "stock_status";
+  sort_dir?: "asc" | "desc";
+  page?: number;
+  page_size?: number;
+}): Promise<ApiResponse<Product[]>> => {
   const query = new URLSearchParams();
   if (filters?.search) query.append("search", filters.search);
   if (filters?.category_id)
@@ -249,6 +274,12 @@ export const getProducts = async (filters?: {
   if (filters?.supplier_id)
     query.append("supplier_id", filters.supplier_id.toString());
   if (filters?.stock_status) query.append("stock_status", filters.stock_status);
+  if (filters?.no_barcode_only) query.append("no_barcode_only", "true");
+  if (filters?.sort_by) query.append("sort_by", filters.sort_by);
+  if (filters?.sort_dir) query.append("sort_dir", filters.sort_dir);
+  if (filters?.page) query.append("page", filters.page.toString());
+  if (filters?.page_size)
+    query.append("page_size", filters.page_size.toString());
   const endpoint = `/products${query.toString() ? `?${query.toString()}` : ""}`;
   return fetchApi(endpoint, "GET");
 };
@@ -398,7 +429,14 @@ export const processOrderPOS = async (
 export const getOrderInvoice = async (params: {
   id?: number;
   searchTerm?: string;
-}): Promise<{ message: string; data: (OrdersListRow | InvoiceRow)[] }> => {
+  payment_method?: "cash" | "gcash" | "utang";
+  date_from?: string;
+  date_to?: string;
+  sort_by?: "order_id" | "order_date" | "items" | "total" | "payment";
+  sort_dir?: "asc" | "desc";
+  page?: number;
+  page_size?: number;
+}): Promise<ApiResponse<(OrdersListRow | InvoiceRow)[] | InvoiceData>> => {
   const query = new URLSearchParams();
   if (params.id !== undefined && params.id !== null) {
     query.append("id", String(params.id));
@@ -406,10 +444,29 @@ export const getOrderInvoice = async (params: {
   if (params.searchTerm) {
     query.append("searchTerm", params.searchTerm);
   }
+  if (params.payment_method) {
+    query.append("payment_method", params.payment_method);
+  }
+  if (params.date_from) query.append("date_from", params.date_from);
+  if (params.date_to) query.append("date_to", params.date_to);
+  if (params.sort_by) query.append("sort_by", params.sort_by);
+  if (params.sort_dir) query.append("sort_dir", params.sort_dir);
+  if (params.page) query.append("page", params.page.toString());
+  if (params.page_size) query.append("page_size", params.page_size.toString());
   const endpoint = `/orders/history${
     query.toString() ? `?${query.toString()}` : ""
   }`;
   return fetchApi(endpoint, "GET");
+};
+
+export const voidOrder = async (
+  orderId: number,
+  action: "cancel" | "refund"
+): Promise<{
+  message: string;
+  data: { order_id: number; status: "cancelled" | "refunded"; restored_items: number };
+}> => {
+  return fetchApi(`/orders/${orderId}/void`, "POST", { action });
 };
 
 // --- Report API Calls ---
@@ -762,4 +819,59 @@ export const listStockMovements = async (filters?: {
     query.toString() ? `?${query.toString()}` : ""
   }`;
   return fetchApi(endpoint, "GET");
+};
+
+// --- Settings API Calls ---
+export type StoreRole = "owner" | "admin" | "staff";
+
+export interface StoreSettings {
+  store_id: number;
+  name: string;
+  timezone: string;
+  currency: string;
+  receipt_name: string | null;
+  receipt_address: string | null;
+  receipt_phone: string | null;
+  receipt_footer: string | null;
+  tax_enabled: boolean;
+  tax_rate: number;
+  tax_label: string;
+  require_cash_session: boolean;
+  allow_negative_stock: boolean;
+}
+
+export interface StoreUser {
+  user_id: number;
+  email: string;
+  name: string | null;
+  is_active: boolean;
+  role: StoreRole;
+  joined_at: string;
+}
+
+export const getStoreSettings = async (): Promise<{
+  message: string;
+  data: StoreSettings;
+}> => {
+  return fetchApi("/settings/store", "GET");
+};
+
+export const updateStoreSettings = async (
+  settings: Omit<StoreSettings, "store_id">
+): Promise<{ message: string; data: StoreSettings }> => {
+  return fetchApi("/settings/store", "PUT", settings);
+};
+
+export const listStoreUsers = async (): Promise<{
+  message: string;
+  data: StoreUser[];
+}> => {
+  return fetchApi("/settings/users", "GET");
+};
+
+export const updateStoreUserRole = async (
+  userId: number,
+  role: StoreRole
+): Promise<{ message: string; data: MutationResult }> => {
+  return fetchApi(`/settings/users/${userId}/role`, "PATCH", { role });
 };

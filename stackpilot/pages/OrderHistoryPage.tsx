@@ -1,13 +1,19 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   CashIcon,
   CreditCardIcon,
   DocumentDuplicateIcon,
 } from "../components/icons";
+import ConfirmationModal from "../components/ConfirmationModal";
 import InvoiceModal from "../components/InvoiceModal";
 import { useFormatters } from "../format";
 import { useAuth } from "../context/AuthContext";
-import { getOrderInvoice, OrderListItem, OrdersListRow } from "../utils/api";
+import {
+  getOrderInvoice,
+  OrderListItem,
+  OrdersListRow,
+  voidOrder,
+} from "../utils/api";
 import { useDebounce } from "../utils/hooks";
 
 interface OrderItem {
@@ -37,18 +43,38 @@ const OrderHistoryPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
+  const [voidingOrder, setVoidingOrder] = useState<Order | null>(null);
   const [paymentFilter, setPaymentFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [sortKey, setSortKey] = useState<OrderSortKey>("order_date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
   const pageSize = 25;
 
   const { formatCurrency, formatLocalDate } = useFormatters();
 
   // Debounce the search term - only triggers after user stops typing
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  const parseOrdersResponse = (rawData: unknown): OrderListItem[] => {
+    const firstRow = Array.isArray(rawData)
+      ? (rawData[0] as OrdersListRow | undefined)
+      : undefined;
+    const ordersJsonRaw = firstRow?.orders_json ?? rawData;
+
+    if (!ordersJsonRaw) return [];
+    if (typeof ordersJsonRaw === "string") {
+      try {
+        return JSON.parse(ordersJsonRaw) as OrderListItem[];
+      } catch {
+        return [];
+      }
+    }
+    if (Array.isArray(ordersJsonRaw)) return ordersJsonRaw as OrderListItem[];
+    return [];
+  };
 
   /** Fetch all orders (list mode) */
   const fetchOrderHistory = useCallback(async () => {
@@ -60,43 +86,36 @@ const OrderHistoryPage: React.FC = () => {
       // call typed API: returns { data: (OrdersListRow | InvoiceRow)[] }
       const response = await getOrderInvoice({
         searchTerm: debouncedSearchTerm || undefined,
+        payment_method: paymentFilter
+          ? (paymentFilter as "cash" | "gcash" | "utang")
+          : undefined,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+        sort_by: sortKey,
+        sort_dir: sortDirection,
+        page,
+        page_size: pageSize,
       });
 
-      // response.data is (OrdersListRow | InvoiceRow)[]
-      const firstRow = response.data?.[0] as OrdersListRow | undefined;
-
-      // ordersJsonRaw can be:
-      // - undefined (no rows)
-      // - a string (JSON text)
-      // - already-parsed array (OrderListItem[])
-      const ordersJsonRaw = firstRow?.orders_json ?? response.data;
-
-      let parsedOrders: OrderListItem[] = [];
-
-      if (!ordersJsonRaw) {
-        parsedOrders = [];
-      } else if (typeof ordersJsonRaw === "string") {
-        // parse string JSON
-        try {
-          parsedOrders = JSON.parse(ordersJsonRaw) as OrderListItem[];
-        } catch (parseErr) {
-          // console.error("Failed to parse orders_json string:", parseErr);
-          parsedOrders = [];
-        }
-      } else if (Array.isArray(ordersJsonRaw)) {
-        parsedOrders = ordersJsonRaw as OrderListItem[];
-      } else {
-        parsedOrders = [];
-      }
-
+      const parsedOrders = parseOrdersResponse(response.data);
       setOrders(parsedOrders);
+      setTotalOrders(response.pagination?.total ?? parsedOrders.length);
     } catch (err: any) {
       // console.error("Failed to fetch order history:", err);
       setError(err?.message || "Failed to fetch order history.");
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, debouncedSearchTerm]);
+  }, [
+    isAuthenticated,
+    debouncedSearchTerm,
+    paymentFilter,
+    dateFrom,
+    dateTo,
+    sortKey,
+    sortDirection,
+    page,
+  ]);
 
   useEffect(() => {
     fetchOrderHistory();
@@ -106,54 +125,8 @@ const OrderHistoryPage: React.FC = () => {
     setPage(1);
   }, [debouncedSearchTerm, paymentFilter, dateFrom, dateTo, sortKey, sortDirection]);
 
-  const visibleOrders = useMemo(() => {
-    const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
-    const toTime = dateTo ? new Date(`${dateTo}T23:59:59`).getTime() : null;
-
-    const filtered = orders.filter((order) => {
-      const orderTime = new Date(order.order_date).getTime();
-      const method = (order.payment_method || "").toLowerCase();
-
-      if (paymentFilter && method !== paymentFilter) return false;
-      if (fromTime !== null && orderTime < fromTime) return false;
-      if (toTime !== null && orderTime > toTime) return false;
-      return true;
-    });
-
-    const getSortValue = (order: Order) => {
-      switch (sortKey) {
-        case "order_id":
-          return order.order_id;
-        case "items":
-          return order.items?.length || 0;
-        case "total":
-          return Number(order.total || 0);
-        case "payment":
-          return order.payment_method || "";
-        case "order_date":
-        default:
-          return new Date(order.order_date).getTime();
-      }
-    };
-
-    return [...filtered].sort((a, b) => {
-      const aValue = getSortValue(a);
-      const bValue = getSortValue(b);
-      const direction = sortDirection === "asc" ? 1 : -1;
-
-      if (typeof aValue === "number" && typeof bValue === "number") {
-        return (aValue - bValue) * direction;
-      }
-
-      return String(aValue).localeCompare(String(bValue)) * direction;
-    });
-  }, [dateFrom, dateTo, orders, paymentFilter, sortDirection, sortKey]);
-
-  const pageCount = Math.max(1, Math.ceil(visibleOrders.length / pageSize));
-  const pagedOrders = useMemo(
-    () => visibleOrders.slice((page - 1) * pageSize, page * pageSize),
-    [page, visibleOrders]
-  );
+  const pageCount = Math.max(1, Math.ceil(totalOrders / pageSize));
+  const pagedOrders = orders;
 
   const handleSort = (key: OrderSortKey) => {
     if (key === sortKey) {
@@ -209,7 +182,18 @@ const OrderHistoryPage: React.FC = () => {
     setDateTo("");
   };
 
-  const exportOrdersCsv = () => {
+  const exportOrdersCsv = async () => {
+    const response = await getOrderInvoice({
+      searchTerm: debouncedSearchTerm || undefined,
+      payment_method: paymentFilter
+        ? (paymentFilter as "cash" | "gcash" | "utang")
+        : undefined,
+      date_from: dateFrom || undefined,
+      date_to: dateTo || undefined,
+      sort_by: sortKey,
+      sort_dir: sortDirection,
+    });
+    const exportOrders = parseOrdersResponse(response.data) as Order[];
     const headers = [
       "Order ID",
       "Date",
@@ -222,7 +206,7 @@ const OrderHistoryPage: React.FC = () => {
     ];
     const escapeCsv = (value: unknown) =>
       `"${String(value ?? "").replace(/"/g, '""')}"`;
-    const rows = visibleOrders.map((order) => [
+    const rows = exportOrders.map((order) => [
       order.order_id,
       order.order_date,
       order.items?.map((item) => `${item.product} x${item.qty}`).join("; ") || "",
@@ -250,6 +234,24 @@ const OrderHistoryPage: React.FC = () => {
 
   const handleCloseReceipt = () => {
     setViewingOrder(null);
+  };
+
+  const handleVoidOrder = async () => {
+    if (!voidingOrder) return;
+    const order = voidingOrder;
+    const action = order.status === "pending" ? "cancel" : "refund";
+
+    setLoading(true);
+    setError(null);
+    try {
+      await voidOrder(order.order_id, action);
+      setVoidingOrder(null);
+      await fetchOrderHistory();
+    } catch (err: any) {
+      setError(err.message || "Unable to update order.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading && orders.length === 0) {
@@ -324,7 +326,7 @@ const OrderHistoryPage: React.FC = () => {
             <button
               type="button"
               onClick={exportOrdersCsv}
-              disabled={visibleOrders.length === 0}
+              disabled={totalOrders === 0}
               className="btn btn-ghost"
             >
               Export CSV
@@ -366,11 +368,11 @@ const OrderHistoryPage: React.FC = () => {
                   {renderSortHeader("items", "Items")}
                   {renderSortHeader("total", "Total", "text-right")}
                   {renderSortHeader("payment", "Payment", "text-center")}
-                  <th scope="col" className="text-center">Resibo</th>
+                  <th scope="col" className="text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {visibleOrders.length === 0 ? (
+                {totalOrders === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-12 text-center">
                       <p className="text-sm font-semibold text-muted">
@@ -425,13 +427,25 @@ const OrderHistoryPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="text-center">
-                          <button
-                            onClick={() => handleViewReceipt(order)}
-                            className="btn btn-ghost mx-auto min-h-11 min-w-11 px-0"
-                            aria-label="View resibo"
-                          >
-                            <DocumentDuplicateIcon className="h-5 w-5" />
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleViewReceipt(order)}
+                              className="btn btn-ghost min-h-11 min-w-11 px-0"
+                              aria-label="View resibo"
+                            >
+                              <DocumentDuplicateIcon className="h-5 w-5" />
+                            </button>
+                            {(order.status === "paid" ||
+                              order.status === "pending") && (
+                              <button
+                                type="button"
+                                onClick={() => setVoidingOrder(order)}
+                                className="btn btn-ghost text-danger"
+                              >
+                                {order.status === "pending" ? "Cancel" : "Refund"}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -441,12 +455,12 @@ const OrderHistoryPage: React.FC = () => {
             </table>
           </div>
 
-          {visibleOrders.length > pageSize && (
+          {totalOrders > pageSize && (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3 text-sm text-muted">
               <span>
                 Showing {(page - 1) * pageSize + 1}-
-                {Math.min(page * pageSize, visibleOrders.length)} of{" "}
-                {visibleOrders.length}
+                {Math.min(page * pageSize, totalOrders)} of{" "}
+                {totalOrders}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -479,6 +493,22 @@ const OrderHistoryPage: React.FC = () => {
       {viewingOrder && (
         <InvoiceModal orderId={viewingOrder.order_id} onClose={handleCloseReceipt} />
       )}
+      <ConfirmationModal
+        isOpen={!!voidingOrder}
+        title={
+          voidingOrder?.status === "pending"
+            ? "Cancel order"
+            : "Refund order"
+        }
+        message={
+          voidingOrder
+            ? `Order #${voidingOrder.order_id} stock will be restored. This action cannot be undone.`
+            : ""
+        }
+        variant="danger"
+        onConfirm={handleVoidOrder}
+        onCancel={() => setVoidingOrder(null)}
+      />
     </main>
   );
 };

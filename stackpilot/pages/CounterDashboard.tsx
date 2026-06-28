@@ -12,6 +12,12 @@ import InvoiceModal from "../components/InvoiceModal";
 import { useAuth } from "../context/AuthContext";
 import { useFormatters } from "../format";
 import {
+  cacheCustomers,
+  cacheProducts,
+  readCachedCustomers,
+  readCachedProducts,
+} from "../offline/cache";
+import {
   discardSyncQueueItem,
   listFailedSyncQueue,
   getSyncQueueSummary,
@@ -123,12 +129,39 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
     setError(null);
 
     try {
+      const cachedProducts = await readCachedProducts();
+      if (cachedProducts.length > 0) {
+        setProducts(
+          cachedProducts
+            .filter((product) => product.stock > 0)
+            .filter((product) => {
+              const term = debouncedSearchTerm.trim().toLowerCase();
+              if (!term) return true;
+              return (
+                product.name.toLowerCase().includes(term) ||
+                String(product.sku || "").toLowerCase().includes(term) ||
+                String(product.barcode || "").toLowerCase().includes(term)
+              );
+            })
+        );
+      }
+
       const response = await getProducts({
         search: debouncedSearchTerm || undefined,
       });
-      setProducts((response.data || []).filter((product) => product.stock > 0));
+      const networkProducts = (response.data || []).filter(
+        (product) => product.stock > 0
+      );
+      setProducts(networkProducts);
+      await cacheProducts(response.data || []);
     } catch (err: any) {
-      setError(err.message || "Unable to load products.");
+      const cachedProducts = await readCachedProducts();
+      if (cachedProducts.length > 0) {
+        setProducts(cachedProducts.filter((product) => product.stock > 0));
+        setError(null);
+      } else {
+        setError(err.message || "Unable to load products.");
+      }
     } finally {
       setLoading(false);
     }
@@ -139,12 +172,18 @@ const CounterDashboard: React.FC<CounterDashboardProps> = ({
   }, [fetchProducts]);
 
   const refreshLedger = useCallback(async () => {
+    const cachedCustomers = await readCachedCustomers();
+    if (cachedCustomers.length > 0) {
+      setCustomers(cachedCustomers);
+    }
+
     const [customersResponse, whoOwesResponse] = await Promise.all([
       getCustomers(),
       getWhoOwes(),
     ]);
 
     setCustomers(customersResponse.data || []);
+    await cacheCustomers(customersResponse.data || []);
     setWhoOwes(whoOwesResponse.data || []);
   }, []);
 

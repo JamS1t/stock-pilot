@@ -8,6 +8,7 @@ import {
 import { ApiError } from "../utils/apiError";
 import { safeJSONParse } from "../utils/json.util";
 import { errorResponse, successResponse } from "../utils/response.util";
+import { logAuditSafe } from "../services/audit.service";
 
 function parseId(value: unknown, code: string, message: string) {
   const id = Number(value);
@@ -36,6 +37,18 @@ export async function openCashSessionHandler(req: Request, res: Response) {
     );
 
     const result = await openCashSession(store_id, openingCash, user_id);
+    await logAuditSafe(
+      {
+        storeId: store_id,
+        userId: user_id,
+        ip: req.ip || null,
+        userAgent: req.get("User-Agent") || null,
+      },
+      "cash_session.open",
+      "cash_session",
+      result.cash_session_id,
+      { opening_cash: openingCash }
+    );
 
     return successResponse(res, "Cash session opened successfully", result, 201);
   } catch (err: any) {
@@ -72,6 +85,22 @@ export async function closeCashSessionHandler(req: Request, res: Response) {
       expectedCash,
       actualCash,
       user_id
+    );
+    await logAuditSafe(
+      {
+        storeId: store_id,
+        userId: user_id,
+        ip: req.ip || null,
+        userAgent: req.get("User-Agent") || null,
+      },
+      "cash_session.close",
+      "cash_session",
+      cashSessionId,
+      {
+        expected_cash: expectedCash,
+        actual_cash: actualCash,
+        difference: actualCash - expectedCash,
+      }
     );
 
     return successResponse(res, "Cash session closed successfully", result);

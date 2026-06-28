@@ -36,6 +36,7 @@ const InventoryPage: React.FC = () => {
   const [sortKey, setSortKey] = useState<InventorySortKey>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
   const pageSize = 25;
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -75,14 +76,21 @@ const InventoryPage: React.FC = () => {
                   | "Low Stock"
                   | "In Stock")
               : undefined,
+          no_barcode_only: noBarcodeOnly,
+          sort_by: sortKey,
+          sort_dir: sortDirection,
+          page,
+          page_size: pageSize,
         }),
         getCategories(),
         getSuppliers(),
       ]);
 
-      setProducts(
-        Array.isArray(productsRes.data) ? productsRes.data : [productsRes.data]
-      );
+      const nextProducts = Array.isArray(productsRes.data)
+        ? productsRes.data
+        : [productsRes.data];
+      setProducts(nextProducts);
+      setTotalProducts(productsRes.pagination?.total ?? nextProducts.length);
       setCategories(
         Array.isArray(categoriesRes.data)
           ? categoriesRes.data
@@ -104,6 +112,10 @@ const InventoryPage: React.FC = () => {
     debouncedCategoryFilter,
     debouncedSupplierFilter,
     debouncedStockStatusFilter,
+    noBarcodeOnly,
+    sortKey,
+    sortDirection,
+    page,
   ]);
 
   useEffect(() => {
@@ -128,49 +140,8 @@ const InventoryPage: React.FC = () => {
     [categories]
   );
 
-  const visibleProducts = useMemo(() => {
-    const filtered = noBarcodeOnly
-      ? products.filter((product) => !product.barcode)
-      : products;
-
-    const getSortValue = (product: Product) => {
-      switch (sortKey) {
-        case "category":
-          return product.category_name || categoryNameById.get(product.category_id) || "";
-        case "sku":
-          return product.sku || "";
-        case "barcode":
-          return product.barcode || "";
-        case "selling_price":
-          return Number(product.selling_price || 0);
-        case "stock":
-          return Number(product.stock || 0);
-        case "stock_status":
-          return product.stock_status || "";
-        case "name":
-        default:
-          return product.name || "";
-      }
-    };
-
-    return [...filtered].sort((a, b) => {
-      const aValue = getSortValue(a);
-      const bValue = getSortValue(b);
-      const direction = sortDirection === "asc" ? 1 : -1;
-
-      if (typeof aValue === "number" && typeof bValue === "number") {
-        return (aValue - bValue) * direction;
-      }
-
-      return String(aValue).localeCompare(String(bValue)) * direction;
-    });
-  }, [categoryNameById, noBarcodeOnly, products, sortDirection, sortKey]);
-
-  const pageCount = Math.max(1, Math.ceil(visibleProducts.length / pageSize));
-  const pagedProducts = useMemo(
-    () => visibleProducts.slice((page - 1) * pageSize, page * pageSize),
-    [page, visibleProducts]
-  );
+  const pageCount = Math.max(1, Math.ceil(totalProducts / pageSize));
+  const pagedProducts = products;
 
   const handleSort = (key: InventorySortKey) => {
     if (key === sortKey) {
@@ -189,7 +160,27 @@ const InventoryPage: React.FC = () => {
     setNoBarcodeOnly(false);
   };
 
-  const exportInventoryCsv = () => {
+  const exportInventoryCsv = async () => {
+    const response = await getProducts({
+      search: debouncedSearchTerm || undefined,
+      category_id:
+        debouncedCategoryFilter !== "" ? Number(debouncedCategoryFilter) : undefined,
+      supplier_id:
+        debouncedSupplierFilter !== "" ? Number(debouncedSupplierFilter) : undefined,
+      stock_status:
+        debouncedStockStatusFilter && debouncedStockStatusFilter !== "all"
+          ? (debouncedStockStatusFilter as
+              | "Out of Stock"
+              | "Low Stock"
+              | "In Stock")
+          : undefined,
+      no_barcode_only: noBarcodeOnly,
+      sort_by: sortKey,
+      sort_dir: sortDirection,
+    });
+    const exportProducts = Array.isArray(response.data)
+      ? response.data
+      : [response.data];
     const headers = [
       "Product ID",
       "Name",
@@ -204,7 +195,7 @@ const InventoryPage: React.FC = () => {
     ];
     const escapeCsv = (value: unknown) =>
       `"${String(value ?? "").replace(/"/g, '""')}"`;
-    const rows = visibleProducts.map((product) => [
+    const rows = exportProducts.map((product) => [
       product.product_id,
       product.name,
       product.sku || "",
@@ -360,7 +351,7 @@ const InventoryPage: React.FC = () => {
             <button
               type="button"
               onClick={exportInventoryCsv}
-              disabled={visibleProducts.length === 0}
+              disabled={totalProducts === 0}
               className="btn btn-ghost"
             >
               Export CSV
@@ -454,7 +445,7 @@ const InventoryPage: React.FC = () => {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-peso"></div>
               </div>
             )}
-            {visibleProducts.length === 0 ? (
+            {totalProducts === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
                 <p className="text-sm font-semibold text-muted">
                   No products found
@@ -477,12 +468,12 @@ const InventoryPage: React.FC = () => {
             )}
           </div>
 
-          {visibleProducts.length > pageSize && (
+          {totalProducts > pageSize && (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3 text-sm text-muted">
               <span>
                 Showing {(page - 1) * pageSize + 1}-
-                {Math.min(page * pageSize, visibleProducts.length)} of{" "}
-                {visibleProducts.length}
+                {Math.min(page * pageSize, totalProducts)} of{" "}
+                {totalProducts}
               </span>
               <div className="flex items-center gap-2">
                 <button

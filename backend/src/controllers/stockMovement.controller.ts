@@ -7,6 +7,7 @@ import {
 import { ApiError } from "../utils/apiError";
 import { safeJSONParse } from "../utils/json.util";
 import { errorResponse, successResponse } from "../utils/response.util";
+import { logAuditSafe } from "../services/audit.service";
 
 const REASONS: StockMovementReason[] = [
   "sale",
@@ -66,6 +67,24 @@ export async function createStockMovementHandler(req: Request, res: Response) {
       note || null,
       user_id,
       client_mutation_id || null
+    );
+    await logAuditSafe(
+      {
+        storeId: store_id,
+        userId: user_id,
+        ip: req.ip || null,
+        userAgent: req.get("User-Agent") || null,
+      },
+      "stock.change",
+      "stock_movement",
+      result.movement_id,
+      {
+        product_id: productId,
+        quantity_delta: quantityDelta,
+        reason,
+        source_type: source_type || null,
+        source_id: source_id ? Number(source_id) : null,
+      }
     );
 
     return successResponse(

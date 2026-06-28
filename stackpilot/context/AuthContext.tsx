@@ -1,5 +1,8 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from "react";
-import { logout as apiLogout } from "../utils/api"; // Import logout API call
+import {
+  logout as apiLogout,
+  refreshAccessToken,
+} from "../utils/api"; // Import auth API calls
 
 // Interfaces
 interface User {
@@ -36,6 +39,7 @@ interface AuthContextType {
     role: string;
     metadata: Metadata;
   }) => void;
+  updateStore: (store: Store) => void;
   logout: () => void;
 }
 
@@ -55,23 +59,56 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Load stored auth data on mount
   useEffect(() => {
-    const storedAccessToken = localStorage.getItem("accessToken");
+    const storedAccessToken = sessionStorage.getItem("accessToken");
     const storedUser = localStorage.getItem("user");
     const storedStore = localStorage.getItem("store");
     const storedRole = localStorage.getItem("role");
     const storedMetadata = localStorage.getItem("metadata");
 
-    if (storedAccessToken && storedUser && storedStore && storedRole && storedMetadata) {
+    const restoreSession = (
+      token: string,
+      userJson: string,
+      storeJson: string,
+      roleValue: string,
+      metadataJson: string
+    ) => {
       try {
-        setAccessToken(storedAccessToken);
-        setUser(JSON.parse(storedUser));
-        setStore(JSON.parse(storedStore));
-        setRole(storedRole);
-        setMetadata(JSON.parse(storedMetadata));
+        setAccessToken(token);
+        setUser(JSON.parse(userJson));
+        setStore(JSON.parse(storeJson));
+        setRole(roleValue);
+        setMetadata(JSON.parse(metadataJson));
         setIsAuthenticated(true);
       } catch {
         handleLogout();
       }
+    };
+
+    if (storedAccessToken && storedUser && storedStore && storedRole && storedMetadata) {
+      restoreSession(
+        storedAccessToken,
+        storedUser,
+        storedStore,
+        storedRole,
+        storedMetadata
+      );
+      return;
+    }
+
+    if (storedUser && storedStore && storedRole && storedMetadata) {
+      refreshAccessToken()
+        .then((newToken) => {
+          if (newToken) {
+            restoreSession(
+              newToken,
+              storedUser,
+              storedStore,
+              storedRole,
+              storedMetadata
+            );
+          }
+        })
+        .catch(() => undefined);
     }
   }, []);
 
@@ -82,7 +119,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     role: string;
     metadata: Metadata;
   }) => {
-    localStorage.setItem("accessToken", authData.accessToken);
+    sessionStorage.setItem("accessToken", authData.accessToken);
+    localStorage.removeItem("accessToken");
     localStorage.setItem("user", JSON.stringify(authData.user));
     localStorage.setItem("store", JSON.stringify(authData.store));
     localStorage.setItem("role", authData.role);
@@ -96,12 +134,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsAuthenticated(true);
   };
 
+  const handleUpdateStore = (nextStore: Store) => {
+    localStorage.setItem("store", JSON.stringify(nextStore));
+    setStore(nextStore);
+  };
+
   const handleLogout = async () => {
     try {
       await apiLogout();
     } catch (error) {
       // console.error("Error during backend logout:", error);
     } finally {
+      sessionStorage.removeItem("accessToken");
       localStorage.removeItem("accessToken");
       localStorage.removeItem("user");
       localStorage.removeItem("store");
@@ -128,6 +172,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       metadata,
       login: handleLogin,
       logout: handleLogout,
+      updateStore: handleUpdateStore,
     };
   }, [isAuthenticated, accessToken, user, store, role, metadata]);
 
@@ -141,6 +186,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         role,
         metadata,
         login: handleLogin,
+        updateStore: handleUpdateStore,
         logout: handleLogout,
       }}
     >
